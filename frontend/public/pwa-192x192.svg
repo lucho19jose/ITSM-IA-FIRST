@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="36" ry="36" fill="#1976D2"/>
+  <g transform="translate(96,96)">
+    <path d="M-10,-63.2 L10,-63.2 L11.2,-46.7 L25.1,-40.9 L37.6,-51.8 L51.8,-37.6 L40.9,-25.1 L46.7,-11.2 L63.2,-10 L63.2,10 L46.7,11.2 L40.9,25.1 L51.8,37.6 L37.6,51.8 L25.1,40.9 L11.2,46.7 L10,63.2 L-10,63.2 L-11.2,46.7 L-25.1,40.9 L-37.6,51.8 L-51.8,37.6 L-40.9,25.1 L-46.7,11.2 L-63.2,10 L-63.2,-10 L-46.7,-11.2 L-40.9,-25.1 L-51.8,-37.6 L-37.6,-51.8 L-25.1,-40.9 L-11.2,-46.7 Z" fill="white"/>
+    <circle cx="0" cy="0" r="27" fill="#1976D2"/>
+    <polyline points="-15,3 -4,16 18,-13" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
