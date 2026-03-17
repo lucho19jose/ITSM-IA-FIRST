@@ -29,10 +29,20 @@ class TicketController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $statuses = explode(',', $request->status);
+            if (count($statuses) > 1) {
+                $query->whereIn('status', $statuses);
+            } else {
+                $query->where('status', $statuses[0]);
+            }
         }
         if ($request->filled('priority')) {
-            $query->where('priority', $request->priority);
+            $priorities = explode(',', $request->priority);
+            if (count($priorities) > 1) {
+                $query->whereIn('priority', $priorities);
+            } else {
+                $query->where('priority', $priorities[0]);
+            }
         }
         if ($request->filled('type')) {
             $query->where('type', $request->type);
@@ -65,6 +75,37 @@ class TicketController extends Controller
                   ->orWhere('ticket_number', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
             });
+        }
+
+        if ($request->filled('status_not_in')) {
+            $excludeStatuses = explode(',', $request->status_not_in);
+            $query->whereNotIn('status', $excludeStatuses);
+        }
+
+        if ($request->filled('requester_id')) {
+            $query->where('requester_id', $request->requester_id);
+        }
+
+        if ($request->filled('assigned_to_me') && $request->boolean('assigned_to_me')) {
+            $query->where('assigned_to', $request->user()->id);
+        }
+
+        if ($request->filled('overdue') && $request->boolean('overdue')) {
+            $query->where('resolution_due_at', '<', now())
+                  ->whereNotIn('status', ['resolved', 'closed']);
+        }
+
+        if ($request->filled('response_overdue') && $request->boolean('response_overdue')) {
+            $query->where('response_due_at', '<', now())
+                  ->whereNull('responded_at');
+        }
+
+        if ($request->filled('created_from')) {
+            $query->whereDate('created_at', '>=', $request->created_from);
+        }
+
+        if ($request->filled('created_to')) {
+            $query->whereDate('created_at', '<=', $request->created_to);
         }
 
         $sortField = $request->get('sort', 'created_at');
@@ -146,7 +187,7 @@ class TicketController extends Controller
     {
         $this->authorize('view', $ticket);
 
-        $ticket->load(['category', 'requester', 'assignee', 'department', 'slaPolicy', 'comments.user', 'attachments']);
+        $ticket->load(['category', 'requester', 'assignee', 'department', 'slaPolicy', 'comments.user', 'comments.attachments', 'attachments.user']);
 
         return response()->json([
             'data' => new TicketResource($ticket),
@@ -437,6 +478,7 @@ class TicketController extends Controller
         $request->validate([
             'files' => 'required|array|min:1|max:10',
             'files.*' => 'file|max:10240', // 10MB per file
+            'comment_id' => 'nullable|integer|exists:ticket_comments,id',
         ]);
 
         $attachments = [];
@@ -451,6 +493,7 @@ class TicketController extends Controller
                 'size' => $file->getSize(),
                 'user_id' => $request->user()->id,
                 'tenant_id' => app('tenant_id'),
+                'comment_id' => $request->input('comment_id'),
             ]);
         }
 

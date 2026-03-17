@@ -38,9 +38,10 @@ export function suggestResponse(id: number) {
   return post<{ data: any }>(`tickets/${id}/suggest-response`)
 }
 
-export function uploadTicketAttachments(ticketId: number, files: File[]) {
+export function uploadTicketAttachments(ticketId: number, files: File[], commentId?: number) {
   const formData = new FormData()
   files.forEach(f => formData.append('files[]', f))
+  if (commentId) formData.append('comment_id', String(commentId))
   return post<{ data: any[] }>(`tickets/${ticketId}/attachments`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })

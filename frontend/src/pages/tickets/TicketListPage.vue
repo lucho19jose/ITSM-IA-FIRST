@@ -9,6 +9,8 @@ import { getTickets, quickUpdateTicket, bulkUpdateTickets, exportTickets } from 
 import { getCategories } from '@/api/categories'
 import { getAgents } from '@/api/users'
 import { getDepartments } from '@/api/departments'
+import TicketViewsSidebar from '@/components/tickets/TicketViewsSidebar.vue'
+import type { TicketView } from '@/components/tickets/TicketViewsSidebar.vue'
 import type { Ticket, Category, User, Department } from '@/types'
 
 const { t } = useI18n()
@@ -16,6 +18,41 @@ const router = useRouter()
 const route = useRoute()
 const $q = useQuasar()
 const auth = useAuthStore()
+
+// --- Views Sidebar ---
+const showViewsSidebar = ref(false)
+const currentViewId = ref('unresolved')
+const currentViewLabel = ref('Todos los tickets sin resolver')
+
+function onSelectView(view: TicketView) {
+  currentViewId.value = view.id
+  currentViewLabel.value = view.label
+  // Reset all filters first
+  filters.value = {
+    search: '',
+    statuses: [],
+    priorities: [],
+    types: [],
+    category_id: null,
+    source: null,
+    assigned_to: null,
+    created_from: '',
+    created_to: '',
+  }
+  // Build API params from view filters
+  viewFilters.value = { ...view.filters }
+  // Handle special __me__ token for requester_id
+  if (viewFilters.value.requester_id === '__me__') {
+    viewFilters.value.requester_id = auth.user?.id
+  }
+  currentPage.value = 1
+  loadTickets()
+}
+
+// Extra filter params from selected view (sent directly to API)
+const viewFilters = ref<Record<string, any>>({
+  status_not_in: 'resolved,closed',
+})
 
 // --- State ---
 const loading = ref(false)
@@ -292,6 +329,89 @@ async function doExport() {
   }
 }
 
+// --- Hover Card ---
+const hoveredTicket = ref<Ticket | null>(null)
+const hoverCardStyle = ref({ top: '0px', left: '0px' })
+let hoverEnterTimer: ReturnType<typeof setTimeout> | undefined
+let hoverLeaveTimer: ReturnType<typeof setTimeout> | undefined
+
+function onRowMouseEnter(ticket: Ticket, event: MouseEvent) {
+  clearTimeout(hoverLeaveTimer)
+  clearTimeout(hoverEnterTimer)
+  const target = event.currentTarget as HTMLElement
+  hoverEnterTimer = setTimeout(() => {
+    const rect = target.getBoundingClientRect()
+    const cardWidth = 400
+    const cardHeight = 210
+    // Position: vertically centered on the title, shifted right past the title column
+    const tr = target.closest('tr')
+    const trRect = tr ? tr.getBoundingClientRect() : rect
+    let left = trRect.left + Math.max(200, trRect.width * 0.15)
+    let top = trRect.top + trRect.height / 2 - 10
+    // Keep card within viewport
+    if (left + cardWidth > window.innerWidth - 16) left = window.innerWidth - cardWidth - 16
+    if (top + cardHeight > window.innerHeight - 16) top = trRect.top - cardHeight + trRect.height / 2
+    if (top < 8) top = 8
+    hoverCardStyle.value = { top: `${top}px`, left: `${left}px` }
+    hoveredTicket.value = ticket
+  }, 350)
+}
+
+function onRowMouseLeave() {
+  clearTimeout(hoverEnterTimer)
+  hoverLeaveTimer = setTimeout(() => {
+    hoveredTicket.value = null
+  }, 150)
+}
+
+function onHoverCardEnter() {
+  clearTimeout(hoverLeaveTimer)
+}
+
+function onHoverCardLeave() {
+  hoveredTicket.value = null
+}
+
+function timeAgo(dateStr: string): string {
+  const diffMin = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
+  if (diffMin < 1) return 'hace un momento'
+  if (diffMin < 60) return `hace ${diffMin} minuto${diffMin > 1 ? 's' : ''}`
+  const diffHours = Math.floor(diffMin / 60)
+  if (diffHours < 24) return `hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 30) return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`
+  const diffMonths = Math.floor(diffDays / 30)
+  return `hace ${diffMonths} mes${diffMonths > 1 ? 'es' : ''}`
+}
+
+function formatFullDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleString('es-PE', {
+    weekday: 'short', day: 'numeric', month: 'short',
+    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
+  })
+}
+
+function stripHtml(html: string): string {
+  const tmp = document.createElement('div')
+  tmp.innerHTML = html
+  return tmp.textContent || tmp.innerText || ''
+}
+
+function truncateText(text: string, maxLen: number): string {
+  const clean = stripHtml(text)
+  return clean.length > maxLen ? clean.slice(0, maxLen) + '...' : clean
+}
+
+function goToTicketReply(ticket: Ticket) {
+  hoveredTicket.value = null
+  router.push({ path: `/tickets/${ticket.id}`, query: { action: 'reply' } })
+}
+
+function goToTicketNote(ticket: Ticket) {
+  hoveredTicket.value = null
+  router.push({ path: `/tickets/${ticket.id}`, query: { action: 'note' } })
+}
+
 // --- Helpers ---
 const canInlineEdit = computed(() => auth.isAdmin || auth.isAgent)
 
@@ -392,6 +512,14 @@ async function loadTickets() {
     if (filters.value.assigned_to) params.assigned_to = filters.value.assigned_to
     if (filters.value.created_from) params.created_from = filters.value.created_from
     if (filters.value.created_to) params.created_to = filters.value.created_to
+
+    // Merge view-level filters (from the sidebar views)
+    for (const [key, val] of Object.entries(viewFilters.value)) {
+      if (val !== null && val !== undefined && val !== '') {
+        // Don't override user-set filters
+        if (!params[key]) params[key] = val
+      }
+    }
 
     const res = await getTickets(params)
     tickets.value = res.data
@@ -518,6 +646,10 @@ function clearFilters() {
     created_from: '',
     created_to: '',
   }
+  // Reset to "All tickets" view
+  currentViewId.value = 'all'
+  currentViewLabel.value = 'Todos los tickets'
+  viewFilters.value = {}
   currentPage.value = 1
   loadTickets()
 }
@@ -583,7 +715,32 @@ onMounted(async () => {
 
 <template>
   <q-page padding>
+    <!-- Views Sidebar -->
+    <TicketViewsSidebar
+      v-model="showViewsSidebar"
+      :current-view-id="currentViewId"
+      :current-filters="viewFilters"
+      @select-view="onSelectView"
+    />
+
     <div class="ticket-list-page" style="max-width: 100%;">
+
+      <!-- Page header with view name -->
+      <div class="row items-center q-mb-sm">
+        <q-btn
+          flat dense round
+          icon="menu"
+          size="md"
+          class="q-mr-sm"
+          @click="showViewsSidebar = !showViewsSidebar"
+        >
+          <q-tooltip>Vistas de tickets</q-tooltip>
+        </q-btn>
+        <div>
+          <div class="text-h6 text-weight-bold" style="line-height: 1.2;">Tickets</div>
+          <div class="text-caption text-grey-7">{{ currentViewLabel }}</div>
+        </div>
+      </div>
 
       <!-- Top Toolbar -->
       <div class="toolbar row items-center q-mb-sm q-gutter-x-sm">
@@ -814,8 +971,14 @@ onMounted(async () => {
                 >
                   <!-- Asunto -->
                   <template v-if="colKey === 'title'">
-                    <div class="text-body2 text-weight-medium ellipsis" style="max-width: 360px;">{{ ticket.title }}</div>
-                    <div class="text-caption text-grey">{{ ticket.ticket_number }}</div>
+                    <div
+                      class="title-hover-zone"
+                      @mouseenter.stop="onRowMouseEnter(ticket, $event)"
+                      @mouseleave.stop="onRowMouseLeave"
+                    >
+                      <div class="text-body2 text-weight-medium ellipsis" style="max-width: 360px;">{{ ticket.title }}</div>
+                      <div class="text-caption text-grey">{{ ticket.ticket_number }}</div>
+                    </div>
                   </template>
 
                   <!-- Solicitante -->
@@ -1426,6 +1589,58 @@ onMounted(async () => {
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <!-- Ticket Hover Card (Freshservice-style) -->
+    <Teleport to="body">
+      <transition name="hover-fade">
+        <div
+          v-if="hoveredTicket"
+          class="ticket-hover-card shadow-4"
+          :style="hoverCardStyle"
+          @mouseenter="onHoverCardEnter"
+          @mouseleave="onHoverCardLeave"
+        >
+          <div class="row items-center no-wrap q-mb-sm">
+            <q-avatar
+              size="36px"
+              :style="{ backgroundColor: getAvatarColor(hoveredTicket.requester?.name) }"
+              text-color="white"
+              font-size="15px"
+            >
+              {{ getInitial(hoveredTicket.requester?.name) }}
+            </q-avatar>
+            <div class="q-ml-sm" style="min-width: 0;">
+              <div class="text-body2">
+                <strong>{{ hoveredTicket.requester?.name || 'Usuario' }}</strong>
+                <span class="hover-card-meta"> informó {{ timeAgo(hoveredTicket.updated_at) }}</span>
+              </div>
+              <div class="text-caption hover-card-meta">{{ formatFullDate(hoveredTicket.updated_at) }}</div>
+            </div>
+          </div>
+          <div class="text-body2 text-grey-8 q-mb-md hover-card-desc">
+            {{ truncateText(hoveredTicket.description || '', 200) }}
+          </div>
+          <q-separator class="q-mb-sm" />
+          <div class="row justify-center q-gutter-x-md">
+            <q-btn
+              flat no-caps dense
+              icon="reply"
+              label="Responder"
+              color="grey-7"
+              size="sm"
+              @click.stop="goToTicketReply(hoveredTicket!)"
+            />
+            <q-btn
+              flat no-caps dense
+              icon="note_add"
+              label="Añadir nota"
+              color="grey-7"
+              size="sm"
+              @click.stop="goToTicketNote(hoveredTicket!)"
+            />
+          </div>
+        </div>
+      </transition>
+    </Teleport>
   </q-page>
 </template>
 
@@ -1538,5 +1753,60 @@ onMounted(async () => {
 
 .export-field-item {
   padding: 3px 0;
+}
+</style>
+
+<style>
+/* Ticket hover card – unscoped so Teleport to body works */
+.ticket-hover-card {
+  position: fixed;
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-left: 3px solid #1976d2;
+  border-radius: 6px;
+  padding: 14px 16px;
+  width: 400px;
+  max-width: 90vw;
+  pointer-events: auto;
+  color: #333;
+}
+.ticket-hover-card .hover-card-desc {
+  line-height: 1.5;
+  word-break: break-word;
+  color: #555;
+  font-size: 13px;
+}
+.ticket-hover-card .hover-card-meta {
+  color: #888;
+}
+
+/* Dark mode */
+.body--dark .ticket-hover-card {
+  background: #1e1e2e;
+  border-color: #3a3a4a;
+  border-left-color: #42a5f5;
+  color: #e0e0e0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+.body--dark .ticket-hover-card .hover-card-desc {
+  color: #b0b0b8;
+}
+.body--dark .ticket-hover-card .hover-card-meta {
+  color: #8888a0;
+}
+.body--dark .ticket-hover-card .q-separator {
+  background-color: #3a3a4a;
+}
+
+.hover-fade-enter-active {
+  transition: opacity 0.15s ease;
+}
+.hover-fade-leave-active {
+  transition: opacity 0.1s ease;
+}
+.hover-fade-enter-from,
+.hover-fade-leave-to {
+  opacity: 0;
 }
 </style>

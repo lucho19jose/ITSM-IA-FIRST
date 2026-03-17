@@ -6,7 +6,12 @@ import Pusher from 'pusher-js'
 
 let echoInstance: Echo<'reverb'> | null = null
 
-export function getEcho(): Echo<'reverb'> {
+export function isEchoEnabled(): boolean {
+  return !!import.meta.env.VITE_REVERB_APP_KEY
+}
+
+export function getEcho(): Echo<'reverb'> | null {
+  if (!isEchoEnabled()) return null
   if (echoInstance) return echoInstance
 
   echoInstance = new Echo({

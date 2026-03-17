@@ -12,12 +12,17 @@ class TicketAttachment extends Model
     use BelongsToTenant, HasFactory;
 
     protected $fillable = [
-        'ticket_id', 'user_id', 'filename', 'path', 'mime_type', 'size',
+        'ticket_id', 'comment_id', 'user_id', 'filename', 'path', 'mime_type', 'size',
     ];
 
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class);
+    }
+
+    public function comment(): BelongsTo
+    {
+        return $this->belongsTo(TicketComment::class, 'comment_id');
     }
 
     public function user(): BelongsTo

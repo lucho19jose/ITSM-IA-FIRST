@@ -224,46 +224,58 @@ async function onSubmit() {
 
 <template>
   <q-page padding>
-    <div class="ticket-create-page" style="max-width: 1200px; margin: 0 auto;">
-      <!-- Header -->
-      <div class="row items-center q-mb-lg">
-        <q-btn flat round icon="arrow_back" to="/tickets" class="q-mr-sm" />
-        <div>
-          <div class="text-h5 text-weight-bold">{{ t('tickets.create') }}</div>
-          <div class="text-caption text-grey">Complete los campos para crear un nuevo ticket</div>
-        </div>
+    <div class="ticket-create-page">
+      <!-- Breadcrumb -->
+      <div class="breadcrumb q-mb-sm">
+        <router-link to="/tickets" class="breadcrumb-link">Tickets</router-link>
+        <q-icon name="chevron_right" size="16px" color="grey-6" class="q-mx-xs" />
+        <span class="text-grey-8">Informar sobre un problema</span>
       </div>
 
+      <!-- Header -->
+      <div class="text-h5 text-weight-bold q-mb-lg" style="color: #333;">Informar sobre un problema</div>
+
       <!-- Loading skeleton -->
-      <div v-if="loadingData" class="row q-col-gutter-lg">
+      <div v-if="loadingData" class="row q-col-gutter-xl">
         <div class="col-12 col-md-8">
-          <q-card flat class="shadow-2">
-            <q-card-section>
-              <q-skeleton type="text" width="60%" class="q-mb-md" />
-              <q-skeleton height="40px" class="q-mb-lg" />
-              <q-skeleton height="200px" />
-            </q-card-section>
-          </q-card>
+          <div class="form-panel">
+            <q-skeleton type="text" width="30%" class="q-mb-lg" />
+            <q-skeleton height="44px" class="q-mb-xl" />
+            <q-skeleton type="text" width="20%" class="q-mb-sm" />
+            <q-skeleton height="44px" class="q-mb-xl" />
+            <q-skeleton type="text" width="25%" class="q-mb-sm" />
+            <q-skeleton height="180px" />
+          </div>
         </div>
         <div class="col-12 col-md-4">
-          <q-card flat class="bg-grey-1">
-            <q-card-section>
-              <q-skeleton type="text" width="40%" class="q-mb-md" />
-              <q-skeleton height="40px" class="q-mb-sm" />
-              <q-skeleton height="40px" class="q-mb-sm" />
-              <q-skeleton height="40px" />
-            </q-card-section>
-          </q-card>
+          <div class="help-panel">
+            <q-skeleton type="rect" height="120px" class="q-mb-md" />
+            <q-skeleton type="text" width="80%" class="q-mb-sm" />
+            <q-skeleton type="text" width="90%" />
+          </div>
         </div>
       </div>
 
       <!-- Form -->
       <q-form v-else ref="formRef" @submit.prevent="onSubmit" greedy>
-        <div class="row q-col-gutter-lg">
+        <div class="row q-col-gutter-xl">
           <!-- Left Column: Main Fields -->
           <div class="col-12 col-md-8">
-            <q-card flat class="shadow-2">
-              <q-card-section class="q-pa-lg">
+            <!-- Requester info (read-only) -->
+            <div class="form-panel q-mb-lg" v-if="auth.user">
+              <div class="field-label">Solicitante</div>
+              <div class="requester-display">
+                <q-avatar size="32px" color="primary" text-color="white" font-size="14px" class="q-mr-sm">
+                  {{ auth.user.name?.charAt(0).toUpperCase() || 'U' }}
+                </q-avatar>
+                <div>
+                  <div class="text-body2 text-weight-medium">{{ auth.user.name }}</div>
+                  <div class="text-caption text-grey-6">{{ auth.user.email }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-panel">
                 <template v-for="field in visibleMainFields" :key="field.id">
                   <!-- Title / Subject (special: larger styling) -->
                   <div v-if="field.field_key === 'title'" class="q-mb-md">
@@ -465,18 +477,30 @@ async function onSubmit() {
                     <div v-if="field.help_text" class="text-caption text-grey q-ml-lg">{{ field.help_text }}</div>
                   </div>
                 </template>
-              </q-card-section>
-            </q-card>
+              </div>
           </div>
 
-          <!-- Right Column: Details Sidebar -->
+          <!-- Right Column: Help + Details Sidebar -->
           <div class="col-12 col-md-4">
-            <q-card flat class="bg-grey-1 details-sidebar">
-              <q-card-section>
-                <div class="text-subtitle1 text-weight-bold q-mb-md">
-                  <q-icon name="tune" class="q-mr-xs" />
-                  Detalles
-                </div>
+            <!-- Help suggestion card -->
+            <div class="help-panel q-mb-lg">
+              <div class="text-center q-mb-md">
+                <q-icon name="search" size="48px" color="grey-4" />
+              </div>
+              <div class="text-subtitle2 text-weight-bold text-center q-mb-xs" style="color: #333;">
+                ¿Desea resolver su problema rápidamente?
+              </div>
+              <div class="text-caption text-grey-7 text-center">
+                Añada más información sobre el tema para ver los artículos relevantes aquí mismo.
+              </div>
+            </div>
+
+            <!-- Details panel -->
+            <div class="details-panel">
+              <div class="text-subtitle2 text-weight-bold q-mb-md" style="color: #333;">
+                <q-icon name="tune" size="18px" class="q-mr-xs" />
+                Detalles
+              </div>
 
                 <template v-for="field in visibleDetailFields" :key="field.id">
                   <!-- Priority (special: colored indicators) -->
@@ -699,26 +723,30 @@ async function onSubmit() {
                     />
                   </div>
                 </template>
-              </q-card-section>
-            </q-card>
+            </div>
           </div>
         </div>
 
         <!-- Bottom Actions -->
-        <div class="row justify-end q-mt-lg q-gutter-sm" style="max-width: 1200px;">
+        <div class="actions-bar">
           <q-btn
             flat
+            no-caps
             :label="t('common.cancel')"
             to="/tickets"
-            class="q-px-lg"
+            class="q-px-xl"
+            color="grey-8"
+            style="border: 1px solid #ddd;"
           />
           <q-btn
             type="submit"
             color="primary"
-            icon="send"
-            label="Crear Ticket"
+            no-caps
+            unelevated
+            label="Enviar"
             :loading="loading"
-            class="q-px-lg"
+            class="q-px-xl"
+            style="min-width: 120px;"
           />
         </div>
       </q-form>
@@ -728,12 +756,55 @@ async function onSubmit() {
 
 <style scoped>
 .ticket-create-page {
+  max-width: 1100px;
+  margin: 0 auto;
   padding-bottom: 32px;
 }
 
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+}
+
+.breadcrumb-link {
+  color: var(--q-primary);
+  text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
+/* Form panels */
+.form-panel {
+  background: #fff;
+  border: 1px solid #e8ecf0;
+  border-radius: 8px;
+  padding: 28px 32px;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.requester-display {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e8ecf0;
+  border-radius: 6px;
+}
+
+/* Editor */
 .ticket-editor {
-  border: 1px solid rgba(0, 0, 0, 0.24);
-  border-radius: 4px;
+  border: 1px solid #d0d6dd;
+  border-radius: 6px;
 }
 
 .ticket-editor:focus-within {
@@ -741,8 +812,20 @@ async function onSubmit() {
   border-width: 2px;
 }
 
-.details-sidebar {
+/* Help panel */
+.help-panel {
+  background: #fff;
+  border: 1px solid #e8ecf0;
   border-radius: 8px;
+  padding: 28px 24px;
+}
+
+/* Details panel */
+.details-panel {
+  background: #f8f9fb;
+  border: 1px solid #e8ecf0;
+  border-radius: 8px;
+  padding: 20px 24px;
   position: sticky;
   top: 76px;
 }
@@ -755,10 +838,48 @@ async function onSubmit() {
   flex-shrink: 0;
 }
 
-/* Responsive: on small screens, unset sticky */
+/* Actions bar */
+.actions-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e8ecf0;
+}
+
+/* Dark mode overrides */
+.body--dark .form-panel,
+.body--dark .help-panel {
+  background: #1e1e2e;
+  border-color: #3a3a4a;
+}
+
+.body--dark .details-panel {
+  background: #252535;
+  border-color: #3a3a4a;
+}
+
+.body--dark .requester-display {
+  background: #252535;
+  border-color: #3a3a4a;
+}
+
+.body--dark .field-label {
+  color: #b0b0b8;
+}
+
+.body--dark .actions-bar {
+  border-color: #3a3a4a;
+}
+
+/* Responsive */
 @media (max-width: 1023px) {
-  .details-sidebar {
+  .details-panel {
     position: static;
+  }
+  .form-panel {
+    padding: 20px 16px;
   }
 }
 </style>

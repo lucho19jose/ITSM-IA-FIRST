@@ -137,12 +137,14 @@ export interface TicketComment {
   body: string
   is_internal: boolean
   user?: User
+  attachments?: TicketAttachment[]
   created_at: string
 }
 
 export interface TicketAttachment {
   id: number
   ticket_id: number
+  comment_id: number | null
   user_id: number
   filename: string
   path: string

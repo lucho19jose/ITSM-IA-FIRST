@@ -52,6 +52,7 @@ export function useTenantChannel(
   },
 ) {
   const echo = getEcho()
+  if (!echo) return null
   const channelName = `tenant.${tenantId}`
 
   const channel = echo.private(channelName)
@@ -82,6 +83,7 @@ export function useTicketChannel(
   },
 ) {
   const echo = getEcho()
+  if (!echo) return null
   const channelName = `ticket.${ticketId}`
 
   const channel = echo.private(channelName)
@@ -111,6 +113,7 @@ export function useUserChannel(
   },
 ) {
   const echo = getEcho()
+  if (!echo) return null
   const channelName = `user.${userId}`
 
   const channel = echo.private(channelName)

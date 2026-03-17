@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\InboundEmailController;
 use App\Http\Controllers\Api\V1\TicketFormFieldController;
+use App\Http\Controllers\Api\V1\TicketViewController;
 use App\Http\Controllers\Api\V1\TenantManagementController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -59,6 +60,9 @@ Route::prefix('v1')->group(function () {
         Route::post('tickets/{ticket}/comments', [TicketController::class, 'addComment']);
         Route::post('tickets/{ticket}/attachments', [TicketController::class, 'addAttachments']);
         Route::delete('tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'deleteAttachment']);
+
+        // Ticket Views (saved filters)
+        Route::apiResource('ticket-views', TicketViewController::class)->except(['show']);
 
         // Categories (admin)
         Route::middleware('role:admin')->group(function () {

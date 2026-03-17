@@ -8,6 +8,7 @@ import { applyTenantTheme } from '@/utils/theme'
 import { updateProfile } from '@/api/profile'
 import { getEcho, disconnectEcho } from '@/utils/echo'
 import { get } from '@/utils/api'
+import { getNotifications, markNotificationRead } from '@/api/notifications'
 import { playNewTicket, playNotification, isSoundEnabled, setSoundEnabled } from '@/utils/sounds'
 import { resetOnboarding } from '@/composables/useOnboarding'
 
@@ -98,39 +99,104 @@ onMounted(() => {
   systemDarkQuery.addEventListener('change', onSystemThemeChange)
 })
 
-// ─── Real-time WebSocket connection ──────────────────────────────────────────
+// ─── Notifications ──────────────────────────────────────────────────────────
 const unreadCount = ref(0)
+const notifications = ref<any[]>([])
+const notifLoading = ref(false)
+const showNotifPanel = ref(false)
 
+async function loadNotifications() {
+  notifLoading.value = true
+  try {
+    const res = await getNotifications({ per_page: 20 })
+    notifications.value = res.data || []
+  } catch { /* ignore */ }
+  finally { notifLoading.value = false }
+}
+
+async function onMarkRead(notif: any) {
+  if (notif.read_at) return
+  try {
+    await markNotificationRead(notif.id)
+    notif.read_at = new Date().toISOString()
+    unreadCount.value = Math.max(0, unreadCount.value - 1)
+  } catch { /* ignore */ }
+}
+
+function onNotifClick(notif: any) {
+  onMarkRead(notif)
+  showNotifPanel.value = false
+  // Navigate based on notification type
+  const data = typeof notif.data === 'string' ? JSON.parse(notif.data) : notif.data
+  if (data?.ticket_id) {
+    router.push(`/tickets/${data.ticket_id}`)
+  }
+}
+
+function onOpenNotifPanel() {
+  showNotifPanel.value = true
+  loadNotifications()
+}
+
+function notifTimeAgo(dateStr: string): string {
+  const diffMin = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
+  if (diffMin < 1) return 'ahora'
+  if (diffMin < 60) return `hace ${diffMin}m`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24) return `hace ${diffH}h`
+  const diffD = Math.floor(diffH / 24)
+  return `hace ${diffD}d`
+}
+
+function getNotifIcon(notif: any): string {
+  const data = typeof notif.data === 'string' ? JSON.parse(notif.data) : notif.data
+  const type = data?.type || ''
+  if (type.includes('created') || type.includes('Created')) return 'confirmation_number'
+  if (type.includes('comment') || type.includes('Comment')) return 'chat'
+  if (type.includes('assigned') || type.includes('Assigned')) return 'person_add'
+  if (type.includes('updated') || type.includes('Updated')) return 'edit'
+  if (type.includes('sla') || type.includes('SLA') || type.includes('breach')) return 'alarm'
+  return 'notifications'
+}
+
+function getNotifMessage(notif: any): string {
+  const data = typeof notif.data === 'string' ? JSON.parse(notif.data) : notif.data
+  return data?.message || data?.title || 'Nueva notificacion'
+}
+
+// ─── Real-time WebSocket connection ──────────────────────────────────────────
 onMounted(async () => {
   // Fetch initial unread count
   try {
-    const res = await get<{ count: number }>('notifications/unread-count')
-    unreadCount.value = res.count
+    const res = await get<{ data: { count: number } }>('notifications/unread-count')
+    unreadCount.value = res.data?.count ?? 0
   } catch { /* ignore */ }
 
   // Connect to WebSocket channels
   if (auth.user?.tenant_id) {
     const echo = getEcho()
 
-    // Tenant channel: new tickets, updates
-    echo.private(`tenant.${auth.user.tenant_id}`)
-      .listen('TicketCreated', (e: any) => {
-        playNewTicket()
-        Notify.create({
-          type: 'info',
-          message: `Nuevo ticket: ${e.ticket_number} — ${e.title}`,
-          icon: 'confirmation_number',
-          timeout: 5000,
-          actions: [{ label: 'Ver', color: 'white', handler: () => router.push(`/tickets/${e.id}`) }],
+    if (echo) {
+      // Tenant channel: new tickets, updates
+      echo.private(`tenant.${auth.user.tenant_id}`)
+        .listen('TicketCreated', (e: any) => {
+          playNewTicket()
+          Notify.create({
+            type: 'info',
+            message: `Nuevo ticket: ${e.ticket_number} — ${e.title}`,
+            icon: 'confirmation_number',
+            timeout: 5000,
+            actions: [{ label: 'Ver', color: 'white', handler: () => router.push(`/tickets/${e.id}`) }],
+          })
         })
-      })
 
-    // User channel: personal notifications
-    echo.private(`user.${auth.user.id}`)
-      .listen('NotificationCreated', () => {
-        playNotification()
-        unreadCount.value++
-      })
+      // User channel: personal notifications
+      echo.private(`user.${auth.user.id}`)
+        .listen('NotificationCreated', () => {
+          playNotification()
+          unreadCount.value++
+        })
+    }
   }
 })
 
@@ -202,8 +268,56 @@ function restartTour() {
           to="/tickets/create"
         />
 
-        <q-btn flat round icon="notifications" color="white">
+        <q-btn flat round icon="notifications" color="white" @click="onOpenNotifPanel">
           <q-badge v-if="unreadCount > 0" color="red" floating>{{ unreadCount }}</q-badge>
+
+          <q-menu v-model="showNotifPanel" anchor="bottom right" self="top right" style="width: 380px; max-height: 480px;" class="notif-menu">
+            <!-- Header -->
+            <div class="row items-center q-px-md q-py-sm" style="border-bottom: 1px solid #e0e0e0;">
+              <div class="text-subtitle1 text-weight-bold">Notificaciones</div>
+              <q-space />
+              <q-badge v-if="unreadCount > 0" color="primary" :label="`${unreadCount} sin leer`" />
+            </div>
+
+            <!-- Loading -->
+            <q-linear-progress v-if="notifLoading" indeterminate color="primary" />
+
+            <!-- Empty state -->
+            <div v-if="!notifLoading && notifications.length === 0" class="text-center q-pa-xl text-grey-5">
+              <q-icon name="notifications_none" size="48px" class="q-mb-sm" />
+              <div class="text-body2">Sin notificaciones</div>
+            </div>
+
+            <!-- Notification list -->
+            <q-scroll-area v-else style="height: 380px;">
+              <q-list separator>
+                <q-item
+                  v-for="notif in notifications"
+                  :key="notif.id"
+                  clickable
+                  :class="{ 'bg-blue-1': !notif.read_at }"
+                  @click="onNotifClick(notif)"
+                >
+                  <q-item-section side>
+                    <q-icon
+                      :name="getNotifIcon(notif)"
+                      :color="notif.read_at ? 'grey-5' : 'primary'"
+                      size="22px"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-body2" :class="{ 'text-weight-medium': !notif.read_at }">
+                      {{ getNotifMessage(notif) }}
+                    </q-item-label>
+                    <q-item-label caption>{{ notifTimeAgo(notif.created_at) }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="!notif.read_at" side>
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--q-primary);" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-scroll-area>
+          </q-menu>
         </q-btn>
 
         <!-- Profile dropdown -->

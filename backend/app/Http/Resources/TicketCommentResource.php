@@ -16,6 +16,7 @@ class TicketCommentResource extends JsonResource
             'body' => $this->body,
             'is_internal' => $this->is_internal,
             'user' => new UserResource($this->whenLoaded('user')),
+            'attachments' => $this->whenLoaded('attachments'),
             'created_at' => $this->created_at->toISOString(),
         ];
     }

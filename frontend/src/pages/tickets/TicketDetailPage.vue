@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Notify } from 'quasar'
-import { getTicket, updateTicket, assignTicket, addComment, suggestResponse, improveText } from '@/api/tickets'
+import { getTicket, updateTicket, assignTicket, addComment, suggestResponse, improveText, uploadTicketAttachments, deleteTicketAttachment } from '@/api/tickets'
 import { getAgents } from '@/api/users'
 import { getCategories } from '@/api/categories'
 import { getEcho } from '@/utils/echo'
@@ -29,6 +29,33 @@ const savingProperties = ref(false)
 const propertiesExpanded = ref(true)
 const showReplyEditor = ref(false)
 const improvingText = ref(false)
+const replyAttachments = ref<File[]>([])
+const uploadingAttachments = ref(false)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+function triggerFileInput() {
+  fileInputRef.value?.click()
+}
+
+function onFilesSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+  for (const file of Array.from(input.files)) {
+    if (file.size > 10485760) {
+      Notify.create({ type: 'warning', message: `${file.name} excede 10MB` })
+      continue
+    }
+    replyAttachments.value.push(file)
+  }
+  input.value = '' // reset so same file can be re-selected
+}
+
+// Attachment preview
+const showPreview = ref(false)
+const previewAttachment = ref<{ filename: string; url: string; mime: string } | null>(null)
+const previewZoom = ref(1)
+const previewRotation = ref(0)
+const previewIndex = ref(-1)
 
 // Editable properties (local copy)
 const editProps = reactive({
@@ -43,6 +70,11 @@ const editProps = reactive({
 })
 
 const canManage = computed(() => auth.isAdmin || auth.isAgent)
+
+// Ticket-level attachments (not linked to any comment)
+const ticketLevelAttachments = computed(() =>
+  (ticket.value?.attachments || []).filter(a => !a.comment_id)
+)
 
 const statusOptions = [
   { label: 'Abierto', value: 'open' },
@@ -141,40 +173,42 @@ onMounted(async () => {
 
     // ─── Real-time: listen for updates and new comments ────────────
     const echo = getEcho()
-    echo.private(`ticket.${props.id}`)
-      .listen('TicketUpdated', (e: any) => {
-        if (ticket.value) {
-          // Merge updated fields into the ticket
-          Object.assign(ticket.value, {
-            status: e.status,
-            priority: e.priority,
-            type: e.type,
-            assigned_to: e.assigned_to,
-            updated_at: e.updated_at,
-          })
-          syncEditProps()
-          Notify.create({
-            type: 'info',
-            message: `Ticket actualizado: ${e.changed_fields.join(', ')}`,
-            icon: 'sync',
-            timeout: 3000,
-          })
-        }
-      })
-      .listen('TicketCommentAdded', (e: any) => {
-        if (ticket.value?.comments) {
-          // Avoid duplicates
-          if (!ticket.value.comments.find(c => c.id === e.id)) {
-            ticket.value.comments.push(e)
+    if (echo) {
+      echo.private(`ticket.${props.id}`)
+        .listen('TicketUpdated', (e: any) => {
+          if (ticket.value) {
+            // Merge updated fields into the ticket
+            Object.assign(ticket.value, {
+              status: e.status,
+              priority: e.priority,
+              type: e.type,
+              assigned_to: e.assigned_to,
+              updated_at: e.updated_at,
+            })
+            syncEditProps()
             Notify.create({
               type: 'info',
-              message: `${e.user?.name || 'Alguien'} agrego un comentario`,
-              icon: 'chat',
+              message: `Ticket actualizado: ${e.changed_fields.join(', ')}`,
+              icon: 'sync',
               timeout: 3000,
             })
           }
-        }
-      })
+        })
+        .listen('TicketCommentAdded', (e: any) => {
+          if (ticket.value?.comments) {
+            // Avoid duplicates
+            if (!ticket.value.comments.find(c => c.id === e.id)) {
+              ticket.value.comments.push(e)
+              Notify.create({
+                type: 'info',
+                message: `${e.user?.name || 'Alguien'} agrego un comentario`,
+                icon: 'chat',
+                timeout: 3000,
+              })
+            }
+          }
+        })
+    }
   } finally {
     loading.value = false
   }
@@ -182,7 +216,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   const echo = getEcho()
-  echo.leave(`ticket.${props.id}`)
+  if (echo) echo.leave(`ticket.${props.id}`)
 })
 
 async function onSaveProperties() {
@@ -226,7 +260,22 @@ async function onAddComment() {
       body: newComment.value,
       is_internal: isInternal.value,
     })
-    ticket.value?.comments?.push(res.data)
+    const newCommentData = res.data
+    newCommentData.attachments = []
+
+    // Upload attachments linked to this comment
+    if (replyAttachments.value.length > 0 && ticket.value) {
+      try {
+        const attRes = await uploadTicketAttachments(ticket.value.id, replyAttachments.value, newCommentData.id)
+        newCommentData.attachments = attRes.data
+        replyAttachments.value = []
+      } catch {
+        Notify.create({ type: 'warning', message: 'Comentario guardado pero algunos archivos no se subieron' })
+      }
+    }
+
+    ticket.value?.comments?.push(newCommentData)
+
     newComment.value = ''
     isInternal.value = false
     showReplyEditor.value = false
@@ -379,6 +428,125 @@ function getAvatarColor(name?: string): string {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1048576).toFixed(1)} MB`
+}
+
+function getFileIcon(mime: string): string {
+  if (mime?.startsWith('image/')) return 'image'
+  if (mime === 'application/pdf') return 'picture_as_pdf'
+  if (mime?.includes('word') || mime?.includes('document')) return 'description'
+  if (mime?.includes('sheet') || mime?.includes('excel')) return 'table_chart'
+  return 'attach_file'
+}
+
+function getAttachmentUrl(path: string): string {
+  return `/storage/${path}`
+}
+
+async function onUploadReplyAttachments() {
+  if (!replyAttachments.value.length || !ticket.value) return
+  uploadingAttachments.value = true
+  try {
+    const res = await uploadTicketAttachments(ticket.value.id, replyAttachments.value)
+    if (ticket.value.attachments) {
+      ticket.value.attachments.push(...res.data)
+    } else {
+      ticket.value.attachments = res.data
+    }
+    replyAttachments.value = []
+    Notify.create({ type: 'positive', message: 'Archivos adjuntados', timeout: 2000 })
+  } catch {
+    Notify.create({ type: 'negative', message: 'Error al subir archivos' })
+  } finally {
+    uploadingAttachments.value = false
+  }
+}
+
+async function onDeleteAttachment(attachmentId: number) {
+  if (!ticket.value) return
+  try {
+    await deleteTicketAttachment(ticket.value.id, attachmentId)
+    if (ticket.value.attachments) {
+      ticket.value.attachments = ticket.value.attachments.filter(a => a.id !== attachmentId)
+    }
+    Notify.create({ type: 'positive', message: 'Archivo eliminado', timeout: 2000 })
+  } catch {
+    Notify.create({ type: 'negative', message: 'Error al eliminar archivo' })
+  }
+}
+
+function canPreview(mime: string): boolean {
+  if (!mime) return false
+  return mime.startsWith('image/') || mime === 'application/pdf'
+    || mime.startsWith('text/') || mime.startsWith('video/')
+}
+
+// All previewable attachments for navigation
+const previewableAttachments = computed(() =>
+  (ticket.value?.attachments || []).filter(a => canPreview(a.mime_type))
+)
+
+function openPreview(att: { filename: string; path: string; mime_type: string }) {
+  previewAttachment.value = {
+    filename: att.filename,
+    url: getAttachmentUrl(att.path),
+    mime: att.mime_type,
+  }
+  previewZoom.value = 1
+  previewRotation.value = 0
+  // Find index for navigation
+  previewIndex.value = previewableAttachments.value.findIndex(
+    a => a.path === att.path
+  )
+  showPreview.value = true
+}
+
+function previewZoomIn() {
+  previewZoom.value = Math.min(previewZoom.value + 0.25, 5)
+}
+
+function previewZoomOut() {
+  previewZoom.value = Math.max(previewZoom.value - 0.25, 0.25)
+}
+
+function previewResetZoom() {
+  previewZoom.value = 1
+  previewRotation.value = 0
+}
+
+function previewRotateRight() {
+  previewRotation.value = (previewRotation.value + 90) % 360
+}
+
+function previewRotateLeft() {
+  previewRotation.value = (previewRotation.value - 90 + 360) % 360
+}
+
+function previewNavigate(direction: 1 | -1) {
+  const list = previewableAttachments.value
+  if (list.length <= 1) return
+  const newIdx = (previewIndex.value + direction + list.length) % list.length
+  const att = list[newIdx]
+  previewAttachment.value = {
+    filename: att.filename,
+    url: getAttachmentUrl(att.path),
+    mime: att.mime_type,
+  }
+  previewIndex.value = newIdx
+  previewZoom.value = 1
+  previewRotation.value = 0
+}
+
+function onPreviewWheel(e: WheelEvent) {
+  if (!previewAttachment.value?.mime?.startsWith('image/')) return
+  e.preventDefault()
+  if (e.deltaY < 0) previewZoomIn()
+  else previewZoomOut()
 }
 
 function mdToHtml(text: string): string {
@@ -565,6 +733,74 @@ function mdToHtml(text: string): string {
                 </div>
               </div>
 
+              <!-- Attachments (ticket-level only, not linked to comments) -->
+              <div v-if="ticketLevelAttachments.length" class="ticket-section">
+                <div class="section-title">
+                  Archivos adjuntos
+                  <q-badge color="grey-6" class="q-ml-sm">{{ ticketLevelAttachments.length }}</q-badge>
+                </div>
+
+                <!-- Image thumbnails -->
+                <div v-if="ticketLevelAttachments.filter(a => a.mime_type?.startsWith('image/')).length" class="attachment-thumbnails q-mb-sm">
+                  <div
+                    v-for="att in ticketLevelAttachments.filter(a => a.mime_type?.startsWith('image/'))"
+                    :key="'thumb-' + att.id"
+                    class="attachment-thumb"
+                    @click="openPreview(att)"
+                  >
+                    <img :src="getAttachmentUrl(att.path)" :alt="att.filename" />
+                    <q-tooltip>{{ att.filename }}</q-tooltip>
+                  </div>
+                </div>
+
+                <!-- File list -->
+                <div class="attachments-grid">
+                  <div
+                    v-for="att in ticketLevelAttachments"
+                    :key="att.id"
+                    class="attachment-item"
+                    :class="{ 'attachment-previewable': canPreview(att.mime_type) }"
+                    @click="canPreview(att.mime_type) ? openPreview(att) : undefined"
+                  >
+                    <div class="row items-center no-wrap">
+                      <q-icon :name="getFileIcon(att.mime_type)" size="24px" color="grey-7" class="q-mr-sm" />
+                      <div class="col" style="min-width: 0;">
+                        <span class="attachment-name" :class="canPreview(att.mime_type) ? 'text-primary' : ''">
+                          {{ att.filename }}
+                          <q-icon v-if="canPreview(att.mime_type)" name="visibility" size="14px" class="q-ml-xs" />
+                        </span>
+                        <div class="text-caption text-grey-6">
+                          {{ formatFileSize(att.size) }}
+                          <span v-if="att.user"> &middot; {{ att.user.name }}</span>
+                        </div>
+                      </div>
+                      <q-btn
+                        v-if="canManage"
+                        flat dense round
+                        icon="delete_outline"
+                        size="sm"
+                        color="grey-5"
+                        @click.stop="onDeleteAttachment(att.id)"
+                      >
+                        <q-tooltip>Eliminar</q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        flat dense round
+                        icon="download"
+                        size="sm"
+                        color="grey-5"
+                        tag="a"
+                        :href="getAttachmentUrl(att.path)"
+                        target="_blank"
+                        @click.stop
+                      >
+                        <q-tooltip>Descargar</q-tooltip>
+                      </q-btn>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- AI Copilot -->
               <div v-if="canManage" class="ticket-section ai-copilot">
                 <div class="row items-center q-mb-sm">
@@ -612,6 +848,33 @@ function mdToHtml(text: string): string {
                         respondio el {{ timeAgo(comment.created_at) }} ({{ formatDate(comment.created_at) }})
                       </div>
                       <div class="conversation-body" v-html="comment.body"></div>
+                      <!-- Comment attachments -->
+                      <div v-if="comment.attachments?.length" class="comment-attachments q-mt-sm">
+                        <div
+                          v-for="att in comment.attachments"
+                          :key="att.id"
+                          class="comment-attachment-item"
+                          :class="{ 'attachment-previewable': canPreview(att.mime_type) }"
+                          @click="canPreview(att.mime_type) ? openPreview(att) : undefined"
+                        >
+                          <q-icon :name="getFileIcon(att.mime_type)" size="18px" color="grey-7" class="q-mr-xs" />
+                          <span class="text-caption" :class="canPreview(att.mime_type) ? 'text-primary' : ''">
+                            {{ att.filename }}
+                          </span>
+                          <span class="text-caption text-grey-5 q-ml-xs">({{ formatFileSize(att.size) }})</span>
+                          <q-btn
+                            flat dense round
+                            icon="download"
+                            size="xs"
+                            color="grey-5"
+                            tag="a"
+                            :href="getAttachmentUrl(att.path)"
+                            target="_blank"
+                            @click.stop
+                            class="q-ml-xs"
+                          />
+                        </div>
+                      </div>
                       <!-- Per-conversation action buttons (Freshservice style) -->
                       <div class="conversation-actions">
                         <q-btn v-if="canManage" flat dense size="sm" icon="shortcut" color="grey-5">
@@ -684,8 +947,32 @@ function mdToHtml(text: string): string {
                   ]"
                   placeholder="Escribe tu respuesta..."
                 />
+                <!-- Reply attachments preview -->
+                <div v-if="replyAttachments.length" class="q-mt-sm q-mb-xs">
+                  <q-chip
+                    v-for="(file, idx) in replyAttachments"
+                    :key="idx"
+                    removable
+                    dense
+                    size="sm"
+                    color="primary"
+                    text-color="white"
+                    icon="attach_file"
+                    @remove="replyAttachments.splice(idx, 1)"
+                  >
+                    {{ file.name }} ({{ formatFileSize(file.size) }})
+                  </q-chip>
+                </div>
                 <div class="row items-center q-mt-sm">
-                  <q-btn flat no-caps dense color="grey-7" icon="attach_file" label="Adjuntar" />
+                  <input
+                    ref="fileInputRef"
+                    type="file"
+                    multiple
+                    accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                    style="display: none;"
+                    @change="onFilesSelected"
+                  />
+                  <q-btn flat no-caps dense color="grey-7" icon="attach_file" label="Adjuntar" @click="triggerFileInput" />
                   <q-btn
                     flat no-caps dense size="sm"
                     color="purple"
@@ -1000,6 +1287,136 @@ function mdToHtml(text: string): string {
         </div>
       </div>
     </template>
+    <!-- Attachment Preview Dialog -->
+    <q-dialog v-model="showPreview" maximized transition-show="fade" transition-hide="fade">
+      <div class="preview-overlay column" @click.self="showPreview = false" @wheel.prevent="onPreviewWheel">
+        <!-- Top bar -->
+        <div class="preview-toolbar row items-center q-px-md q-py-xs">
+          <q-icon :name="previewAttachment?.mime?.startsWith('image/') ? 'image' : previewAttachment?.mime === 'application/pdf' ? 'picture_as_pdf' : previewAttachment?.mime?.startsWith('video/') ? 'movie' : 'description'" color="white" size="22px" class="q-mr-sm" />
+          <span class="text-white text-body2 ellipsis" style="max-width: 360px;">{{ previewAttachment?.filename }}</span>
+
+          <!-- Navigation counter -->
+          <span v-if="previewableAttachments.length > 1" class="text-grey-5 text-caption q-ml-sm">
+            ({{ previewIndex + 1 }} / {{ previewableAttachments.length }})
+          </span>
+
+          <q-space />
+
+          <!-- Zoom controls (images only) -->
+          <template v-if="previewAttachment?.mime?.startsWith('image/')">
+            <q-btn flat round dense icon="zoom_out" color="white" size="sm" @click="previewZoomOut" :disable="previewZoom <= 0.25">
+              <q-tooltip>Alejar</q-tooltip>
+            </q-btn>
+            <q-btn flat dense no-caps color="white" size="sm" class="q-px-xs" style="min-width: 50px;" @click="previewResetZoom">
+              {{ Math.round(previewZoom * 100) }}%
+            </q-btn>
+            <q-btn flat round dense icon="zoom_in" color="white" size="sm" @click="previewZoomIn" :disable="previewZoom >= 5">
+              <q-tooltip>Acercar</q-tooltip>
+            </q-btn>
+
+            <q-separator vertical dark class="q-mx-sm" style="height: 20px;" />
+
+            <!-- Rotate controls -->
+            <q-btn flat round dense icon="rotate_left" color="white" size="sm" @click="previewRotateLeft">
+              <q-tooltip>Rotar izquierda</q-tooltip>
+            </q-btn>
+            <q-btn flat round dense icon="rotate_right" color="white" size="sm" @click="previewRotateRight">
+              <q-tooltip>Rotar derecha</q-tooltip>
+            </q-btn>
+
+            <q-separator vertical dark class="q-mx-sm" style="height: 20px;" />
+          </template>
+
+          <!-- Actions -->
+          <q-btn flat round dense icon="download" color="white" size="sm" tag="a" :href="previewAttachment?.url" target="_blank">
+            <q-tooltip>Descargar</q-tooltip>
+          </q-btn>
+          <q-btn flat round dense icon="open_in_new" color="white" size="sm" tag="a" :href="previewAttachment?.url" target="_blank">
+            <q-tooltip>Abrir en nueva pestaña</q-tooltip>
+          </q-btn>
+          <q-btn flat round dense icon="close" color="white" size="sm" @click="showPreview = false" class="q-ml-xs" />
+        </div>
+
+        <!-- Preview content -->
+        <div class="preview-content col" @click.self="showPreview = false">
+          <!-- Navigation arrows -->
+          <q-btn
+            v-if="previewableAttachments.length > 1"
+            flat round
+            icon="chevron_left"
+            color="white"
+            size="lg"
+            class="preview-nav preview-nav-left"
+            @click.stop="previewNavigate(-1)"
+          />
+          <q-btn
+            v-if="previewableAttachments.length > 1"
+            flat round
+            icon="chevron_right"
+            color="white"
+            size="lg"
+            class="preview-nav preview-nav-right"
+            @click.stop="previewNavigate(1)"
+          />
+
+          <!-- Image -->
+          <div
+            v-if="previewAttachment?.mime?.startsWith('image/')"
+            class="preview-image-container"
+          >
+            <img
+              :src="previewAttachment?.url"
+              :alt="previewAttachment?.filename"
+              class="preview-image"
+              :style="{
+                transform: `scale(${previewZoom}) rotate(${previewRotation}deg)`,
+              }"
+              draggable="false"
+            />
+          </div>
+
+          <!-- PDF -->
+          <iframe
+            v-else-if="previewAttachment?.mime === 'application/pdf'"
+            :src="previewAttachment?.url"
+            class="preview-pdf"
+          />
+
+          <!-- Video -->
+          <video
+            v-else-if="previewAttachment?.mime?.startsWith('video/')"
+            :src="previewAttachment?.url"
+            controls
+            class="preview-video"
+          />
+
+          <!-- Text -->
+          <iframe
+            v-else-if="previewAttachment?.mime?.startsWith('text/')"
+            :src="previewAttachment?.url"
+            class="preview-text"
+          />
+
+          <!-- Unsupported -->
+          <div v-else class="text-center text-white" style="margin: auto;">
+            <q-icon name="visibility_off" size="64px" class="q-mb-md" style="opacity: 0.5;" />
+            <div class="text-h6">Vista previa no disponible</div>
+            <div class="text-caption text-grey-5 q-mb-lg">Este tipo de archivo no se puede previsualizar</div>
+            <q-btn
+              color="white"
+              text-color="dark"
+              no-caps
+              unelevated
+              icon="download"
+              label="Descargar archivo"
+              tag="a"
+              :href="previewAttachment?.url"
+              target="_blank"
+            />
+          </div>
+        </div>
+      </div>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -1137,6 +1554,210 @@ function mdToHtml(text: string): string {
   font-size: 14px;
   line-height: 1.7;
   color: #333;
+}
+
+/* Attachments */
+.attachments-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachment-item {
+  padding: 10px 12px;
+  border: 1px solid #e8ecf0;
+  border-radius: 6px;
+  background: #fafbfc;
+  transition: background 0.15s;
+}
+
+.attachment-item:hover {
+  background: #f0f4f8;
+}
+
+.attachment-name {
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-name:hover {
+  text-decoration: underline;
+}
+
+.body--dark .attachment-item {
+  background: #252535;
+  border-color: #3a3a4a;
+}
+
+.body--dark .attachment-item:hover {
+  background: #2a2a3a;
+}
+
+.attachment-previewable {
+  cursor: pointer;
+}
+
+/* Comment-level attachments */
+.comment-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.comment-attachment-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  background: #f5f7fa;
+  border: 1px solid #e8ecf0;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.comment-attachment-item:hover {
+  background: #edf0f5;
+}
+
+.comment-attachment-item.attachment-previewable {
+  cursor: pointer;
+}
+
+.body--dark .comment-attachment-item {
+  background: #252535;
+  border-color: #3a3a4a;
+}
+
+.body--dark .comment-attachment-item:hover {
+  background: #2a2a3a;
+}
+
+/* Image thumbnails */
+.attachment-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attachment-thumb {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  border: 1px solid #e8ecf0;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.attachment-thumb:hover {
+  border-color: var(--q-primary);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+}
+
+.attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.body--dark .attachment-thumb {
+  border-color: #3a3a4a;
+}
+
+/* Preview dialog */
+.preview-overlay {
+  background: rgba(0, 0, 0, 0.94);
+  width: 100%;
+  height: 100%;
+}
+
+.preview-toolbar {
+  background: rgba(30, 30, 40, 0.85);
+  flex-shrink: 0;
+  backdrop-filter: blur(8px);
+  z-index: 2;
+}
+
+.preview-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Navigation arrows */
+.preview-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  background: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(4px);
+}
+
+.preview-nav:hover {
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+
+.preview-nav-left {
+  left: 16px;
+}
+
+.preview-nav-right {
+  right: 16px;
+}
+
+/* Image preview */
+.preview-image-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.preview-image {
+  max-width: 95%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease;
+  user-select: none;
+}
+
+/* PDF preview */
+.preview-pdf {
+  width: 90%;
+  max-width: 900px;
+  height: calc(100vh - 60px);
+  border: none;
+  border-radius: 4px;
+  background: #fff;
+}
+
+/* Video preview */
+.preview-video {
+  max-width: 90%;
+  max-height: 85vh;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Text preview */
+.preview-text {
+  width: 80%;
+  max-width: 800px;
+  height: calc(100vh - 60px);
+  border: none;
+  border-radius: 4px;
+  background: #fff;
 }
 
 /* AI Copilot */
