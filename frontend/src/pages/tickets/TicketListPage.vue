@@ -36,6 +36,8 @@ function onSelectView(view: TicketView) {
     category_id: null,
     source: null,
     assigned_to: null,
+    requester_id: null,
+    requester_name: '',
     created_from: '',
     created_to: '',
   }
@@ -108,6 +110,8 @@ const filters = ref({
   category_id: null as number | null,
   source: null as string | null,
   assigned_to: null as number | null,
+  requester_id: null as number | null,
+  requester_name: '' as string,
   created_from: '',
   created_to: '',
 })
@@ -510,6 +514,7 @@ async function loadTickets() {
     if (filters.value.category_id) params.category_id = filters.value.category_id
     if (filters.value.source) params.source = filters.value.source
     if (filters.value.assigned_to) params.assigned_to = filters.value.assigned_to
+    if (filters.value.requester_id) params.requester_id = filters.value.requester_id
     if (filters.value.created_from) params.created_from = filters.value.created_from
     if (filters.value.created_to) params.created_to = filters.value.created_to
 
@@ -643,6 +648,8 @@ function clearFilters() {
     category_id: null,
     source: null,
     assigned_to: null,
+    requester_id: null,
+    requester_name: '',
     created_from: '',
     created_to: '',
   }
@@ -663,6 +670,7 @@ const activeFilterCount = computed(() => {
   if (filters.value.category_id) count++
   if (filters.value.source) count++
   if (filters.value.assigned_to) count++
+  if (filters.value.requester_id) count++
   if (filters.value.created_from || filters.value.created_to) count++
   return count
 })
@@ -695,6 +703,17 @@ onMounted(async () => {
   // Accept search from global navbar search
   if (route.query.search) {
     filters.value.search = String(route.query.search)
+  }
+  // Accept requester filter from query (e.g. from "Ver todos los tickets" in requester panel)
+  if (route.query.requester_id) {
+    filters.value.requester_id = Number(route.query.requester_id)
+    filters.value.requester_name = String(route.query.requester_name || '')
+    // Switch to "all tickets" view and open filters
+    currentViewId.value = 'all'
+    currentViewLabel.value = 'Todos los tickets'
+    viewFilters.value = {}
+    showFilters.value = true
+    filterTab.value = 'advanced'
   }
   // Load tickets independently so other failures don't block the list
   loadTickets()
@@ -1285,6 +1304,19 @@ onMounted(async () => {
 
             <!-- Advanced -->
             <q-tab-panel name="advanced" class="q-pa-none">
+              <!-- Requester filter (shown when set from requester panel) -->
+              <div v-if="filters.requester_id" class="q-mb-md">
+                <div class="text-caption text-grey-7 text-weight-medium q-mb-xs">Solicitante</div>
+                <q-chip
+                  removable
+                  color="primary"
+                  text-color="white"
+                  icon="person"
+                  :label="filters.requester_name || `Usuario #${filters.requester_id}`"
+                  @remove="filters.requester_id = null; filters.requester_name = ''; applyFilters()"
+                />
+              </div>
+
               <div class="text-caption text-grey-7 text-weight-medium q-mb-xs">{{ t('common.category') }}</div>
               <q-select
                 v-model="filters.category_id"

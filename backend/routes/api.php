@@ -128,6 +128,7 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('users', UserController::class);
         });
         Route::get('users/agents/list', [UserController::class, 'agents']);
+        Route::get('users/{user}/recent-tickets', [UserController::class, 'recentTickets']);
 
         // Notifications
         Route::get('notifications', [NotificationController::class, 'index']);

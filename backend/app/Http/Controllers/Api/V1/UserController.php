@@ -36,7 +36,28 @@ class UserController extends Controller
 
     public function show(User $user): JsonResponse
     {
+        $user->load('department');
         return response()->json(['data' => new UserResource($user)]);
+    }
+
+    public function recentTickets(User $user): JsonResponse
+    {
+        $tickets = \App\Models\Ticket::where('requester_id', $user->id)
+            ->with(['assignee', 'category'])
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'ticket_number' => $t->ticket_number,
+                'title' => $t->title,
+                'status' => $t->status,
+                'priority' => $t->priority,
+                'assignee_name' => $t->assignee?->name,
+                'created_at' => $t->created_at->toISOString(),
+            ]);
+
+        return response()->json(['data' => $tickets]);
     }
 
     public function update(Request $request, User $user): JsonResponse

@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Notify } from 'quasar'
 import { getTicket, updateTicket, assignTicket, addComment, suggestResponse, improveText, uploadTicketAttachments, deleteTicketAttachment } from '@/api/tickets'
-import { getAgents } from '@/api/users'
+import { getAgents, getUser, getUserRecentTickets } from '@/api/users'
 import { getCategories } from '@/api/categories'
 import { getEcho } from '@/utils/echo'
 import type { Ticket, User, Category } from '@/types'
@@ -56,6 +56,64 @@ const previewAttachment = ref<{ filename: string; url: string; mime: string } | 
 const previewZoom = ref(1)
 const previewRotation = ref(0)
 const previewIndex = ref(-1)
+
+// Requester detail panel
+const showRequesterPanel = ref(false)
+const requesterDetail = ref<User | null>(null)
+const requesterTickets = ref<Array<{ id: number; ticket_number: string; title: string; status: string; priority: string; assignee_name: string | null; created_at: string }>>([])
+const requesterLoading = ref(false)
+
+async function openRequesterPanel() {
+  if (!ticket.value?.requester_id) return
+  showRequesterPanel.value = true
+  requesterLoading.value = true
+  try {
+    const [userRes, ticketsRes] = await Promise.all([
+      getUser(ticket.value.requester_id),
+      getUserRecentTickets(ticket.value.requester_id),
+    ])
+    requesterDetail.value = userRes.data
+    requesterTickets.value = ticketsRes.data
+  } catch { /* ignore */ }
+  finally { requesterLoading.value = false }
+}
+
+function getStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    open: 'Abierto', in_progress: 'En Progreso', pending: 'Pendiente',
+    resolved: 'Resuelto', closed: 'Cerrado',
+  }
+  return map[status] || status
+}
+
+function getStatusBadgeColor(status: string): string {
+  const map: Record<string, string> = {
+    open: 'warning', in_progress: 'primary', pending: 'purple',
+    resolved: 'positive', closed: 'grey',
+  }
+  return map[status] || 'grey'
+}
+
+function getPriorityLabel(priority: string): string {
+  const map: Record<string, string> = {
+    low: 'Baja', medium: 'Media', high: 'Alta', urgent: 'Urgente',
+  }
+  return map[priority] || priority
+}
+
+function getRoleLabel(role: string): string {
+  const map: Record<string, string> = {
+    admin: 'Administrador', agent: 'Agente', end_user: 'Usuario final',
+  }
+  return map[role] || role
+}
+
+function getPriorityDotColor(priority: string): string {
+  const map: Record<string, string> = {
+    low: '#4caf50', medium: '#2196f3', high: '#ff9800', urgent: '#f44336',
+  }
+  return map[priority] || '#9e9e9e'
+}
 
 // Editable properties (local copy)
 const editProps = reactive({
@@ -691,7 +749,11 @@ function mdToHtml(text: string): string {
               <div class="col">
                 <div class="ticket-title">{{ ticket.title }}</div>
                 <div class="ticket-meta text-grey-7">
-                  <span class="text-weight-medium text-dark">{{ ticket.requester?.name }}</span>
+                  <span
+                    class="text-weight-medium text-primary"
+                    style="cursor: pointer;"
+                    @click="openRequesterPanel"
+                  >{{ ticket.requester?.name }}</span>
                   informado el {{ timeAgo(ticket.created_at) }}
                   ({{ formatDate(ticket.created_at) }})
                   a traves de
@@ -1103,12 +1165,12 @@ function mdToHtml(text: string): string {
                   {{ getInitial(ticket.requester?.name) }}
                 </div>
                 <div>
-                  <div class="text-weight-medium text-primary" style="font-size: 14px; cursor: pointer">
+                  <div class="text-weight-medium text-primary" style="font-size: 14px; cursor: pointer" @click="openRequesterPanel">
                     {{ ticket.requester?.name }}
                   </div>
                 </div>
               </div>
-              <div class="text-caption text-primary q-ml-sm" style="cursor: pointer; margin-left: 48px">
+              <div class="text-caption text-primary q-ml-sm" style="cursor: pointer; margin-left: 48px" @click="openRequesterPanel">
                 Ver mas detalles
               </div>
             </div>
@@ -1287,6 +1349,133 @@ function mdToHtml(text: string): string {
         </div>
       </div>
     </template>
+    <!-- Requester Detail Panel (Freshservice-style) -->
+    <q-dialog v-model="showRequesterPanel" position="right" full-height>
+      <q-card style="width: 480px; max-width: 90vw;" class="full-height column requester-panel">
+        <!-- Header -->
+        <q-card-section class="q-pb-sm">
+          <div class="row items-center q-mb-md">
+            <q-space />
+            <q-btn flat dense round icon="close" v-close-popup />
+          </div>
+
+          <q-linear-progress v-if="requesterLoading" indeterminate color="primary" class="q-mb-md" />
+
+          <template v-if="requesterDetail">
+            <div class="row items-center q-gutter-md q-mb-lg">
+              <q-avatar size="56px" :style="{ backgroundColor: getAvatarColor(requesterDetail.name) }" text-color="white" font-size="24px">
+                <img v-if="requesterDetail.avatar_url" :src="requesterDetail.avatar_url" />
+                <span v-else>{{ getInitial(requesterDetail.name) }}</span>
+              </q-avatar>
+              <div>
+                <div class="text-h6 text-weight-bold">{{ requesterDetail.name }}</div>
+                <div class="text-caption text-grey-6">{{ requesterDetail.job_title || getRoleLabel(requesterDetail.role) }}</div>
+              </div>
+            </div>
+
+            <!-- User details grid -->
+            <div class="requester-details-grid">
+              <div class="detail-item">
+                <div class="detail-label">Correo electrónico</div>
+                <div class="detail-value">{{ requesterDetail.email }}</div>
+              </div>
+              <div class="detail-item" v-if="requesterDetail.phone">
+                <div class="detail-label">Teléfono</div>
+                <div class="detail-value">{{ requesterDetail.phone }}</div>
+              </div>
+              <div class="detail-item" v-if="requesterDetail.job_title">
+                <div class="detail-label">Título</div>
+                <div class="detail-value">{{ requesterDetail.job_title }}</div>
+              </div>
+              <div class="detail-item" v-if="requesterDetail.department">
+                <div class="detail-label">Departamento</div>
+                <div class="detail-value">{{ requesterDetail.department.name }}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Zona horaria</div>
+                <div class="detail-value">{{ requesterDetail.timezone || 'America/Lima' }}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Idioma</div>
+                <div class="detail-value">{{ requesterDetail.language === 'es' ? 'Español' : requesterDetail.language === 'en' ? 'English' : requesterDetail.language }}</div>
+              </div>
+              <div class="detail-item" v-if="requesterDetail.location">
+                <div class="detail-label">Ubicación</div>
+                <div class="detail-value">{{ requesterDetail.location }}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Formato de hora</div>
+                <div class="detail-value">{{ requesterDetail.time_format || '12h' }}</div>
+              </div>
+              <div class="detail-item" v-if="requesterDetail.is_vip">
+                <div class="detail-label">VIP</div>
+                <div class="detail-value"><q-icon name="star" color="amber" size="16px" /> Sí</div>
+              </div>
+            </div>
+          </template>
+        </q-card-section>
+
+        <q-separator />
+
+        <!-- Recent tickets -->
+        <q-card-section class="col scroll q-pt-sm">
+          <div class="row items-center q-mb-sm">
+            <span class="text-subtitle2 text-weight-bold">Tickets recientes</span>
+            <q-badge v-if="requesterTickets.length" color="grey-5" class="q-ml-sm">{{ requesterTickets.length }}</q-badge>
+          </div>
+
+          <div v-if="requesterLoading" class="q-pa-md text-center">
+            <q-spinner color="primary" size="24px" />
+          </div>
+
+          <div v-else-if="requesterTickets.length === 0" class="text-center text-grey-5 q-pa-lg">
+            Sin tickets recientes
+          </div>
+
+          <q-list v-else separator class="requester-tickets-list">
+            <q-item
+              v-for="rt in requesterTickets"
+              :key="rt.id"
+              clickable
+              @click="showRequesterPanel = false; $router.push(`/tickets/${rt.id}`)"
+              class="q-px-sm"
+            >
+              <q-item-section>
+                <q-item-label class="text-caption text-weight-medium text-primary">
+                  {{ rt.ticket_number }}
+                  <span class="text-dark q-ml-xs">{{ rt.title }}</span>
+                </q-item-label>
+                <q-item-label caption>
+                  {{ timeAgo(rt.created_at) }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side class="text-right" style="min-width: 100px;">
+                <q-item-label>
+                  <q-badge :color="getStatusBadgeColor(rt.status)" :label="getStatusLabel(rt.status)" class="text-caption" />
+                </q-item-label>
+                <q-item-label caption class="q-mt-xs">
+                  <span class="priority-dot q-mr-xs" :style="{ backgroundColor: getPriorityDotColor(rt.priority) }" />
+                  {{ getPriorityLabel(rt.priority) }}
+                </q-item-label>
+                <q-item-label v-if="rt.assignee_name" caption>
+                  {{ rt.assignee_name }}
+                </q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <div v-if="requesterTickets.length > 0" class="q-mt-md text-center">
+            <q-btn
+              flat no-caps dense color="primary"
+              label="Mostrar todos los tickets"
+              icon-right="open_in_new"
+              @click="showRequesterPanel = false; $router.push({ path: '/tickets', query: { requester_id: String(ticket!.requester_id), requester_name: requesterDetail?.name || '' } })"
+            />
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
     <!-- Attachment Preview Dialog -->
     <q-dialog v-model="showPreview" maximized transition-show="fade" transition-hide="fade">
       <div class="preview-overlay column" @click.self="showPreview = false" @wheel.prevent="onPreviewWheel">
@@ -1666,6 +1855,45 @@ function mdToHtml(text: string): string {
 
 .body--dark .attachment-thumb {
   border-color: #3a3a4a;
+}
+
+/* Requester detail panel */
+.requester-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 24px;
+}
+
+.detail-item .detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+
+.detail-item .detail-value {
+  font-size: 13px;
+  color: #333;
+  word-break: break-word;
+}
+
+.body--dark .detail-item .detail-value {
+  color: #d0d0d8;
+}
+
+.requester-tickets-list .q-item {
+  border-radius: 6px;
+  padding: 10px 8px;
+}
+
+.requester-tickets-list .q-item:hover {
+  background: #f5f7fa;
+}
+
+.body--dark .requester-tickets-list .q-item:hover {
+  background: #2a2a3a;
 }
 
 /* Preview dialog */
