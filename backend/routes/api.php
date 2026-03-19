@@ -81,11 +81,12 @@ Route::prefix('v1')->group(function () {
             Route::delete('tickets/{ticket}/associations/{association}', [TicketAssociationController::class, 'destroy']);
         });
 
-        // Ticket merge, spam, favorite
+        // Ticket merge, spam, favorite, share
         Route::post('tickets/{ticket}/merge', [TicketController::class, 'merge'])
             ->middleware('role:admin,agent');
         Route::post('tickets/{ticket}/spam', [TicketController::class, 'toggleSpam'])
             ->middleware('role:admin,agent');
+        Route::post('tickets/{ticket}/share', [TicketController::class, 'share']);
         Route::post('tickets/{ticket}/favorite', [TicketController::class, 'toggleFavorite']);
 
         // Scenarios

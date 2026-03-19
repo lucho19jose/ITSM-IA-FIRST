@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Notify } from 'quasar'
-import { getTicket, updateTicket, assignTicket, addComment, suggestResponse, improveText, uploadTicketAttachments, deleteTicketAttachment, getTickets, mergeTicket, toggleSpam, toggleFavorite } from '@/api/tickets'
+import { getTicket, updateTicket, assignTicket, addComment, suggestResponse, improveText, uploadTicketAttachments, deleteTicketAttachment, getTickets, mergeTicket, toggleSpam, toggleFavorite, shareTicket } from '@/api/tickets'
 import { getAgents, getUser, getUserRecentTickets } from '@/api/users'
 import { getCategories } from '@/api/categories'
 import { getTimeEntries, addTimeEntry, deleteTimeEntry } from '@/api/timeEntries'
@@ -281,12 +281,31 @@ async function loadAgentGroups() {
   } catch { /* ignore */ }
 }
 
-// ─── Share (copy link) ──────────────────────────────────────────────────────
+// ─── Share ───────────────────────────────────────────────────────────────────
+const showShareDialog = ref(false)
+const shareForm = reactive({ email: '', message: '' })
+const shareLoading = ref(false)
+
 function onCopyLink() {
   const url = window.location.href
   navigator.clipboard.writeText(url).then(() => {
     Notify.create({ type: 'positive', message: 'Enlace copiado al portapapeles' })
   })
+}
+
+async function onShareByEmail() {
+  if (!ticket.value || !shareForm.email) return
+  shareLoading.value = true
+  try {
+    const res = await shareTicket(ticket.value.id, {
+      email: shareForm.email,
+      message: shareForm.message || undefined,
+    })
+    showShareDialog.value = false
+    shareForm.email = ''
+    shareForm.message = ''
+    Notify.create({ type: 'positive', message: res.message })
+  } finally { shareLoading.value = false }
 }
 
 // ─── Participants ───────────────────────────────────────────────────────────
@@ -962,10 +981,14 @@ function mdToHtml(text: string): string {
               Compartir
               <q-icon name="arrow_drop_down" size="18px" />
               <q-menu>
-                <q-list dense style="min-width: 200px">
+                <q-list dense style="min-width: 220px">
                   <q-item clickable v-close-popup @click="onCopyLink">
                     <q-item-section avatar><q-icon name="content_copy" size="18px" /></q-item-section>
                     <q-item-section>Copiar enlace</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="showShareDialog = true">
+                    <q-item-section avatar><q-icon name="email" size="18px" /></q-item-section>
+                    <q-item-section>Enviar por email</q-item-section>
                   </q-item>
                 </q-list>
               </q-menu>
@@ -2298,6 +2321,45 @@ function mdToHtml(text: string): string {
 
         <q-card-actions align="right">
           <q-btn flat no-caps label="Cerrar" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Share via Email Dialog -->
+    <q-dialog v-model="showShareDialog">
+      <q-card style="min-width: 420px;">
+        <q-card-section>
+          <div class="text-h6">Compartir por email</div>
+        </q-card-section>
+
+        <q-card-section class="q-gutter-md">
+          <q-input
+            v-model="shareForm.email"
+            type="email"
+            label="Correo del destinatario *"
+            dense outlined
+            placeholder="ejemplo@empresa.com"
+          />
+          <q-input
+            v-model="shareForm.message"
+            type="textarea"
+            label="Mensaje (opcional)"
+            dense outlined
+            rows="3"
+            placeholder="Agrega un mensaje personal..."
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancelar" v-close-popup />
+          <q-btn
+            color="primary" no-caps
+            icon="send"
+            label="Enviar"
+            :loading="shareLoading"
+            :disable="!shareForm.email"
+            @click="onShareByEmail"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>

@@ -80,6 +80,10 @@ export function toggleFavorite(ticketId: number) {
   return post<{ is_favorite: boolean; message: string }>(`tickets/${ticketId}/favorite`)
 }
 
+export function shareTicket(ticketId: number, data: { email: string; message?: string }) {
+  return post<{ message: string }>(`tickets/${ticketId}/share`, data)
+}
+
 export async function exportTickets(data: {
   fields: string[]
   format?: string

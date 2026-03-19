@@ -844,4 +844,36 @@ class TicketController extends Controller
 
         return response()->json(['is_favorite' => true, 'message' => 'Agregado a favoritos']);
     }
+
+    public function share(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('view', $ticket);
+
+        $validated = $request->validate([
+            'email' => 'required|email',
+            'message' => 'nullable|string|max:2000',
+        ]);
+
+        $ticket->load('requester');
+
+        \Illuminate\Support\Facades\Mail::to($validated['email'])
+            ->send(new \App\Mail\TicketShared(
+                $ticket,
+                $request->user(),
+                $validated['message'] ?? '',
+            ));
+
+        ActivityLogService::log(
+            $request->user(), 'shared', $ticket,
+            "compartió el ticket {$ticket->title} ({$ticket->ticket_number}) con {$validated['email']}",
+            [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'ticket_title' => $ticket->title,
+                'shared_with' => $validated['email'],
+            ]
+        );
+
+        return response()->json(['message' => "Ticket compartido con {$validated['email']}"]);
+    }
 }
