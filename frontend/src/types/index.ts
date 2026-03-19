@@ -125,9 +125,44 @@ export interface Ticket {
   planned_end_date: string | null
   response_due_at: string | null
   resolution_due_at: string | null
+  agent_group_id: number | null
+  agent_group?: AgentGroup
   satisfaction_rating: number | null
+  resolution_notes: string | null
+  is_spam: boolean
+  time_entries?: TimeEntry[]
   created_at: string
   updated_at: string
+}
+
+export interface TimeEntry {
+  id: number
+  ticket_id: number
+  user: {
+    id: number
+    name: string
+    avatar_url: string | null
+  }
+  hours: number
+  note: string | null
+  executed_at: string
+  billable: boolean
+  created_at: string
+}
+
+export interface TicketAssociation {
+  id: number
+  ticket_id: number
+  related_ticket_id: number
+  type: 'parent' | 'child' | 'related' | 'cause'
+  related_ticket: {
+    id: number
+    ticket_number: string
+    title: string
+    status: string
+    priority: string
+  }
+  created_at: string
 }
 
 export interface TicketComment {
@@ -246,6 +281,25 @@ export interface ActivityLog {
     is_internal?: boolean
     [key: string]: unknown
   } | null
+  created_at: string
+}
+
+export interface AgentGroup {
+  id: number
+  name: string
+  description: string | null
+  is_active: boolean
+  members?: { id: number; name: string; email: string; avatar_url: string | null }[]
+  members_count?: number
+  created_at: string
+}
+
+export interface Scenario {
+  id: number
+  name: string
+  description: string | null
+  actions: { field: string; value: any }[]
+  is_active: boolean
   created_at: string
 }
 

@@ -4,11 +4,16 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Notify } from 'quasar'
-import { getTicket, updateTicket, assignTicket, addComment, suggestResponse, improveText, uploadTicketAttachments, deleteTicketAttachment } from '@/api/tickets'
+import { getTicket, updateTicket, assignTicket, addComment, suggestResponse, improveText, uploadTicketAttachments, deleteTicketAttachment, getTickets, mergeTicket, toggleSpam, toggleFavorite } from '@/api/tickets'
 import { getAgents, getUser, getUserRecentTickets } from '@/api/users'
 import { getCategories } from '@/api/categories'
+import { getTimeEntries, addTimeEntry, deleteTimeEntry } from '@/api/timeEntries'
+import { getTicketAssociations, createTicketAssociation, deleteTicketAssociation } from '@/api/ticketAssociations'
+import { getRecentActivities } from '@/api/activities'
+import { getScenarios, executeScenario } from '@/api/scenarios'
+import { getAgentGroups } from '@/api/agentGroups'
 import { getEcho } from '@/utils/echo'
-import type { Ticket, User, Category } from '@/types'
+import type { Ticket, User, Category, TimeEntry, TicketAssociation, ActivityLog, Scenario, AgentGroup } from '@/types'
 
 const props = defineProps<{ id: string }>()
 const { t } = useI18n()
@@ -56,6 +61,277 @@ const previewAttachment = ref<{ filename: string; url: string; mime: string } | 
 const previewZoom = ref(1)
 const previewRotation = ref(0)
 const previewIndex = ref(-1)
+
+// ─── Time Tracking ──────────────────────────────────────────────────────────
+const timeEntries = ref<TimeEntry[]>([])
+const showTimeDialog = ref(false)
+const timeForm = reactive({ hours: 1, note: '', executed_at: new Date().toISOString().slice(0, 10), billable: false })
+const timeLoading = ref(false)
+
+async function loadTimeEntries() {
+  if (!ticket.value) return
+  try {
+    const res = await getTimeEntries(ticket.value.id)
+    timeEntries.value = res.data || []
+  } catch { /* ignore */ }
+}
+
+const totalTimeLogged = computed(() => timeEntries.value.reduce((sum, e) => sum + e.hours, 0))
+
+async function onAddTimeEntry() {
+  if (!ticket.value) return
+  timeLoading.value = true
+  try {
+    const res = await addTimeEntry(ticket.value.id, {
+      hours: timeForm.hours,
+      note: timeForm.note || undefined,
+      executed_at: timeForm.executed_at,
+      billable: timeForm.billable,
+    })
+    timeEntries.value.unshift(res.data)
+    showTimeDialog.value = false
+    timeForm.hours = 1
+    timeForm.note = ''
+    timeForm.executed_at = new Date().toISOString().slice(0, 10)
+    timeForm.billable = false
+    Notify.create({ type: 'positive', message: 'Tiempo registrado' })
+  } finally { timeLoading.value = false }
+}
+
+async function onDeleteTimeEntry(entryId: number) {
+  if (!ticket.value) return
+  try {
+    await deleteTimeEntry(ticket.value.id, entryId)
+    timeEntries.value = timeEntries.value.filter(e => e.id !== entryId)
+    Notify.create({ type: 'positive', message: 'Entrada eliminada' })
+  } catch { /* ignore */ }
+}
+
+// ─── Ticket Associations ────────────────────────────────────────────────────
+const associations = ref<TicketAssociation[]>([])
+const showAssocDialog = ref(false)
+const assocForm = reactive({ search: '', type: 'related' as string })
+const assocSearchResults = ref<Ticket[]>([])
+const assocSearching = ref(false)
+const assocLoading = ref(false)
+
+async function loadAssociations() {
+  if (!ticket.value) return
+  try {
+    const res = await getTicketAssociations(ticket.value.id)
+    associations.value = res.data || []
+  } catch { /* ignore */ }
+}
+
+async function onSearchTicketsForAssoc() {
+  if (!assocForm.search.trim()) return
+  assocSearching.value = true
+  try {
+    const res = await getTickets({ search: assocForm.search, per_page: 10 })
+    assocSearchResults.value = (res.data || []).filter((t: Ticket) => t.id !== ticket.value?.id)
+  } catch { /* ignore */ }
+  finally { assocSearching.value = false }
+}
+
+async function onCreateAssociation(relatedId: number) {
+  if (!ticket.value) return
+  assocLoading.value = true
+  try {
+    const res = await createTicketAssociation(ticket.value.id, {
+      related_ticket_id: relatedId,
+      type: assocForm.type,
+    })
+    associations.value.unshift(res.data)
+    showAssocDialog.value = false
+    assocForm.search = ''
+    assocSearchResults.value = []
+    Notify.create({ type: 'positive', message: 'Ticket asociado' })
+  } finally { assocLoading.value = false }
+}
+
+async function onDeleteAssociation(assocId: number) {
+  if (!ticket.value) return
+  try {
+    await deleteTicketAssociation(ticket.value.id, assocId)
+    associations.value = associations.value.filter(a => a.id !== assocId)
+    Notify.create({ type: 'positive', message: 'Asociación eliminada' })
+  } catch { /* ignore */ }
+}
+
+// ─── Activity Log (per-ticket) ──────────────────────────────────────────────
+const ticketActivities = ref<ActivityLog[]>([])
+const activitiesLoading = ref(false)
+
+async function loadTicketActivities() {
+  if (!ticket.value) return
+  activitiesLoading.value = true
+  try {
+    const res = await getRecentActivities({ per_page: 50 })
+    // Filter to only this ticket's activities
+    ticketActivities.value = (res.data || []).filter(
+      (a: ActivityLog) => a.properties?.ticket_id === ticket.value?.id
+    )
+  } catch { /* ignore */ }
+  finally { activitiesLoading.value = false }
+}
+
+// ─── Resolution ─────────────────────────────────────────────────────────────
+const resolutionNotes = ref('')
+const savingResolution = ref(false)
+
+async function onSaveResolution() {
+  if (!ticket.value) return
+  savingResolution.value = true
+  try {
+    const res = await updateTicket(ticket.value.id, { resolution_notes: resolutionNotes.value } as any)
+    ticket.value = { ...ticket.value, ...res.data }
+    Notify.create({ type: 'positive', message: 'Resolución guardada' })
+  } finally { savingResolution.value = false }
+}
+
+// ─── Print ──────────────────────────────────────────────────────────────────
+function onPrintTicket() {
+  window.print()
+}
+
+// ─── Merge Tickets ──────────────────────────────────────────────────────────
+const showMergeDialog = ref(false)
+const mergeSearch = ref('')
+const mergeSearchResults = ref<Ticket[]>([])
+const mergeSearching = ref(false)
+const mergeLoading = ref(false)
+
+async function onSearchTicketsForMerge() {
+  if (!mergeSearch.value.trim()) return
+  mergeSearching.value = true
+  try {
+    const res = await getTickets({ search: mergeSearch.value, per_page: 10 })
+    mergeSearchResults.value = (res.data || []).filter((t: Ticket) => t.id !== ticket.value?.id)
+  } catch { /* ignore */ }
+  finally { mergeSearching.value = false }
+}
+
+async function onMergeTicket(sourceId: number) {
+  if (!ticket.value) return
+  mergeLoading.value = true
+  try {
+    const res = await mergeTicket(ticket.value.id, sourceId)
+    ticket.value = res.data
+    syncEditProps()
+    showMergeDialog.value = false
+    mergeSearch.value = ''
+    mergeSearchResults.value = []
+    Notify.create({ type: 'positive', message: res.message || 'Ticket combinado' })
+  } finally { mergeLoading.value = false }
+}
+
+// ─── Spam ───────────────────────────────────────────────────────────────────
+async function onToggleSpam() {
+  if (!ticket.value) return
+  try {
+    const res = await toggleSpam(ticket.value.id)
+    ticket.value = { ...ticket.value, ...res.data }
+    Notify.create({ type: 'info', message: res.message })
+  } catch { /* ignore */ }
+}
+
+// ─── Favorite ───────────────────────────────────────────────────────────────
+const isFavorite = ref(false)
+
+async function onToggleFavorite() {
+  if (!ticket.value) return
+  try {
+    const res = await toggleFavorite(ticket.value.id)
+    isFavorite.value = res.is_favorite
+    Notify.create({ type: 'info', message: res.message })
+  } catch { /* ignore */ }
+}
+
+// ─── Scenarios ──────────────────────────────────────────────────────────────
+const scenarios = ref<Scenario[]>([])
+const showScenarioDialog = ref(false)
+const scenarioLoading = ref(false)
+
+async function loadScenarios() {
+  try {
+    const res = await getScenarios()
+    scenarios.value = res.data || []
+  } catch { /* ignore */ }
+}
+
+async function onRunScenario(scenarioId: number) {
+  if (!ticket.value) return
+  scenarioLoading.value = true
+  try {
+    const res = await executeScenario(ticket.value.id, scenarioId)
+    ticket.value = res.data
+    syncEditProps()
+    showScenarioDialog.value = false
+    Notify.create({ type: 'positive', message: res.message || 'Escenario ejecutado' })
+  } finally { scenarioLoading.value = false }
+}
+
+// ─── Agent Groups ───────────────────────────────────────────────────────────
+const agentGroups = ref<AgentGroup[]>([])
+
+async function loadAgentGroups() {
+  try {
+    const res = await getAgentGroups()
+    agentGroups.value = res.data || []
+  } catch { /* ignore */ }
+}
+
+// ─── Share (copy link) ──────────────────────────────────────────────────────
+function onCopyLink() {
+  const url = window.location.href
+  navigator.clipboard.writeText(url).then(() => {
+    Notify.create({ type: 'positive', message: 'Enlace copiado al portapapeles' })
+  })
+}
+
+// ─── Participants ───────────────────────────────────────────────────────────
+const participants = computed(() => {
+  if (!ticket.value) return []
+  const map = new Map<number, { id: number; name: string; avatar_url: string | null; role: string; count: number }>()
+  // Requester
+  if (ticket.value.requester) {
+    map.set(ticket.value.requester.id, {
+      id: ticket.value.requester.id,
+      name: ticket.value.requester.name,
+      avatar_url: ticket.value.requester.avatar_url,
+      role: 'Solicitante',
+      count: 0,
+    })
+  }
+  // Assignee
+  if (ticket.value.assignee && !map.has(ticket.value.assignee.id)) {
+    map.set(ticket.value.assignee.id, {
+      id: ticket.value.assignee.id,
+      name: ticket.value.assignee.name,
+      avatar_url: ticket.value.assignee.avatar_url,
+      role: 'Agente',
+      count: 0,
+    })
+  }
+  // Commenters
+  for (const c of ticket.value.comments || []) {
+    if (c.user) {
+      const existing = map.get(c.user.id)
+      if (existing) {
+        existing.count++
+      } else {
+        map.set(c.user.id, {
+          id: c.user.id,
+          name: c.user.name,
+          avatar_url: c.user.avatar_url ?? null,
+          role: 'Participante',
+          count: 1,
+        })
+      }
+    }
+  }
+  return Array.from(map.values())
+})
 
 // Requester detail panel
 const showRequesterPanel = ref(false)
@@ -125,6 +401,7 @@ const editProps = reactive({
   impact: null as string | null,
   category_id: null as number | null,
   assigned_to: null as number | null,
+  agent_group_id: null as number | null,
 })
 
 const canManage = computed(() => auth.isAdmin || auth.isAgent)
@@ -189,6 +466,14 @@ const agentOptions = computed(() => [
   })),
 ])
 
+const agentGroupOptions = computed(() => [
+  { label: 'Sin grupo', value: null },
+  ...agentGroups.value.filter(g => g.is_active).map(g => ({
+    label: g.name,
+    value: g.id,
+  })),
+])
+
 const propertiesDirty = computed(() => {
   if (!ticket.value) return false
   return (
@@ -199,7 +484,8 @@ const propertiesDirty = computed(() => {
     editProps.urgency !== (ticket.value.urgency || null) ||
     editProps.impact !== (ticket.value.impact || null) ||
     editProps.category_id !== ticket.value.category_id ||
-    editProps.assigned_to !== ticket.value.assigned_to
+    editProps.assigned_to !== ticket.value.assigned_to ||
+    editProps.agent_group_id !== (ticket.value.agent_group_id || null)
   )
 })
 
@@ -213,6 +499,7 @@ function syncEditProps() {
   editProps.impact = ticket.value.impact || null
   editProps.category_id = ticket.value.category_id
   editProps.assigned_to = ticket.value.assigned_to
+  editProps.agent_group_id = ticket.value.agent_group_id || null
 }
 
 onMounted(async () => {
@@ -228,6 +515,24 @@ onMounted(async () => {
     categories.value = results[1].data
     if (results[2]) agents.value = results[2].data
     syncEditProps()
+
+    // Initialize resolution notes
+    resolutionNotes.value = ticket.value?.resolution_notes || ''
+
+    // Load time entries from eager-loaded data or fetch separately
+    if (ticket.value?.time_entries) {
+      timeEntries.value = ticket.value.time_entries
+    } else if (canManage.value) {
+      loadTimeEntries()
+    }
+
+    // Load associations, activities, scenarios, groups in background
+    if (canManage.value) {
+      loadAssociations()
+      loadTicketActivities()
+      loadScenarios()
+      loadAgentGroups()
+    }
 
     // ─── Real-time: listen for updates and new comments ────────────
     const echo = getEcho()
@@ -296,6 +601,8 @@ async function onSaveProperties() {
       }
       payload.assigned_to = editProps.assigned_to
     }
+
+    if (editProps.agent_group_id !== (ticket.value!.agent_group_id || null)) payload.agent_group_id = editProps.agent_group_id
 
     if (Object.keys(payload).length > 0) {
       const res = await updateTicket(Number(props.id), payload as any)
@@ -647,13 +954,21 @@ function mdToHtml(text: string): string {
 
           <!-- Right: action buttons -->
           <div class="row items-center no-wrap q-gutter-x-xs">
-            <q-btn flat dense icon="star_border" color="grey-6" size="sm">
-              <q-tooltip>Favorito</q-tooltip>
+            <q-btn flat dense :icon="isFavorite ? 'star' : 'star_border'" :color="isFavorite ? 'amber' : 'grey-6'" size="sm" @click="onToggleFavorite">
+              <q-tooltip>{{ isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos' }}</q-tooltip>
             </q-btn>
 
             <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn">
               Compartir
               <q-icon name="arrow_drop_down" size="18px" />
+              <q-menu>
+                <q-list dense style="min-width: 200px">
+                  <q-item clickable v-close-popup @click="onCopyLink">
+                    <q-item-section avatar><q-icon name="content_copy" size="18px" /></q-item-section>
+                    <q-item-section>Copiar enlace</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
             </q-btn>
 
             <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn"
@@ -681,6 +996,26 @@ function mdToHtml(text: string): string {
             <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn">
               Asociar
               <q-icon name="arrow_drop_down" size="18px" />
+              <q-menu>
+                <q-list dense style="min-width: 180px">
+                  <q-item clickable v-close-popup @click="assocForm.type = 'related'; showAssocDialog = true">
+                    <q-item-section avatar><q-icon name="link" size="18px" /></q-item-section>
+                    <q-item-section>Relacionado</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="assocForm.type = 'parent'; showAssocDialog = true">
+                    <q-item-section avatar><q-icon name="account_tree" size="18px" /></q-item-section>
+                    <q-item-section>Padre</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="assocForm.type = 'child'; showAssocDialog = true">
+                    <q-item-section avatar><q-icon name="subdirectory_arrow_right" size="18px" /></q-item-section>
+                    <q-item-section>Hijo</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="assocForm.type = 'cause'; showAssocDialog = true">
+                    <q-item-section avatar><q-icon name="warning_amber" size="18px" /></q-item-section>
+                    <q-item-section>Causa</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
             </q-btn>
 
             <q-btn
@@ -700,14 +1035,31 @@ function mdToHtml(text: string): string {
 
             <q-btn flat dense round icon="more_vert" color="grey-7" size="sm">
               <q-menu>
-                <q-list dense style="min-width: 160px">
-                  <q-item clickable v-close-popup>
-                    <q-item-section avatar><q-icon name="delete" size="18px" /></q-item-section>
-                    <q-item-section>Eliminar</q-item-section>
+                <q-list dense style="min-width: 220px">
+                  <q-item v-if="canManage" clickable v-close-popup @click="showMergeDialog = true">
+                    <q-item-section avatar><q-icon name="merge_type" size="18px" /></q-item-section>
+                    <q-item-section>Combinar</q-item-section>
                   </q-item>
-                  <q-item clickable v-close-popup>
+                  <q-item v-if="canManage && scenarios.length" clickable v-close-popup @click="showScenarioDialog = true">
+                    <q-item-section avatar><q-icon name="play_circle_outline" size="18px" /></q-item-section>
+                    <q-item-section>Ejecutar situación</q-item-section>
+                  </q-item>
+                  <q-item v-if="canManage" clickable v-close-popup @click="showTimeDialog = true">
+                    <q-item-section avatar><q-icon name="schedule" size="18px" /></q-item-section>
+                    <q-item-section>Añadir hora</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="onPrintTicket">
                     <q-item-section avatar><q-icon name="print" size="18px" /></q-item-section>
                     <q-item-section>Imprimir</q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item v-if="canManage" clickable v-close-popup @click="onToggleSpam">
+                    <q-item-section avatar><q-icon name="report" size="18px" :color="ticket.is_spam ? 'positive' : 'warning'" /></q-item-section>
+                    <q-item-section>{{ ticket.is_spam ? 'Desmarcar basura' : 'Marcar como basura' }}</q-item-section>
+                  </q-item>
+                  <q-item v-if="canManage" clickable v-close-popup class="text-negative">
+                    <q-item-section avatar><q-icon name="delete" size="18px" color="negative" /></q-item-section>
+                    <q-item-section>Eliminar</q-item-section>
                   </q-item>
                 </q-list>
               </q-menu>
@@ -775,10 +1127,20 @@ function mdToHtml(text: string): string {
             dense
           >
             <q-tab name="details" label="Detalles" />
-            <q-tab name="related" label="Tickets relacionados" />
-            <q-tab name="tasks" label="Tareas" />
+            <q-tab name="related">
+              <span>Tickets relacionados</span>
+              <q-badge v-if="associations.length" color="grey-6" class="q-ml-xs">{{ associations.length }}</q-badge>
+            </q-tab>
+            <q-tab name="time">
+              <span>Tiempo</span>
+              <q-badge v-if="timeEntries.length" color="grey-6" class="q-ml-xs">{{ totalTimeLogged.toFixed(1) }}h</q-badge>
+            </q-tab>
             <q-tab name="activity" label="Actividad" />
-            <q-tab name="resolution" label="Resolucion" />
+            <q-tab name="participants">
+              <span>Participantes</span>
+              <q-badge v-if="participants.length" color="grey-6" class="q-ml-xs">{{ participants.length }}</q-badge>
+            </q-tab>
+            <q-tab name="resolution" label="Resolución" />
           </q-tabs>
 
           <q-separator />
@@ -1063,39 +1425,171 @@ function mdToHtml(text: string): string {
             </q-tab-panel>
 
             <!-- Related Tickets Tab -->
+            <!-- Related Tickets Tab -->
             <q-tab-panel name="related" class="q-pa-lg">
-              <div class="text-grey-5 text-center q-pa-xl">
-                <q-icon name="link" size="48px" class="q-mb-sm" /><br>
-                No hay tickets relacionados
+              <div class="row items-center q-mb-md">
+                <div class="text-subtitle2 text-weight-bold">Tickets asociados</div>
+                <q-space />
+                <q-btn v-if="canManage" flat dense no-caps color="primary" icon="add" label="Asociar ticket" @click="assocForm.type = 'related'; showAssocDialog = true" />
               </div>
+
+              <div v-if="associations.length === 0" class="text-grey-5 text-center q-pa-xl">
+                <q-icon name="link" size="48px" class="q-mb-sm" /><br>
+                No hay tickets asociados
+              </div>
+
+              <q-list v-else separator>
+                <q-item v-for="assoc in associations" :key="assoc.id" clickable @click="$router.push(`/tickets/${assoc.related_ticket.id}`)">
+                  <q-item-section avatar>
+                    <q-icon :name="assoc.type === 'parent' ? 'account_tree' : assoc.type === 'child' ? 'subdirectory_arrow_right' : assoc.type === 'cause' ? 'warning_amber' : 'link'" color="grey-7" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>
+                      <span class="text-primary text-weight-medium">{{ assoc.related_ticket.ticket_number }}</span>
+                      <span class="q-ml-sm">{{ assoc.related_ticket.title }}</span>
+                    </q-item-label>
+                    <q-item-label caption>
+                      <q-badge :color="getStatusBadgeColor(assoc.related_ticket.status)" :label="getStatusLabel(assoc.related_ticket.status)" class="q-mr-sm" />
+                      <span class="text-capitalize">{{ assoc.type === 'parent' ? 'Padre' : assoc.type === 'child' ? 'Hijo' : assoc.type === 'cause' ? 'Causa' : 'Relacionado' }}</span>
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side v-if="canManage">
+                    <q-btn flat dense round icon="close" size="sm" color="grey-5" @click.stop="onDeleteAssociation(assoc.id)" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
             </q-tab-panel>
 
-            <!-- Tasks Tab -->
-            <q-tab-panel name="tasks" class="q-pa-lg">
-              <div class="text-grey-5 text-center q-pa-xl">
-                <q-icon name="task" size="48px" class="q-mb-sm" /><br>
-                No hay tareas asociadas
+            <!-- Time Tracking Tab -->
+            <q-tab-panel name="time" class="q-pa-lg">
+              <div class="row items-center q-mb-md">
+                <div class="text-subtitle2 text-weight-bold">Registro de tiempo</div>
+                <q-badge v-if="totalTimeLogged > 0" color="primary" class="q-ml-sm">{{ totalTimeLogged.toFixed(1) }}h total</q-badge>
+                <q-space />
+                <q-btn v-if="canManage" flat dense no-caps color="primary" icon="add" label="Añadir hora" @click="showTimeDialog = true" />
               </div>
+
+              <div v-if="timeEntries.length === 0" class="text-grey-5 text-center q-pa-xl">
+                <q-icon name="schedule" size="48px" class="q-mb-sm" /><br>
+                No hay tiempo registrado
+              </div>
+
+              <q-list v-else separator>
+                <q-item v-for="entry in timeEntries" :key="entry.id">
+                  <q-item-section avatar>
+                    <q-avatar size="32px" color="primary" text-color="white" font-size="13px">
+                      <img v-if="entry.user.avatar_url" :src="entry.user.avatar_url" />
+                      <span v-else>{{ entry.user.name.charAt(0).toUpperCase() }}</span>
+                    </q-avatar>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>
+                      <span class="text-weight-bold">{{ entry.hours }}h</span>
+                      <q-badge v-if="entry.billable" color="green-2" text-color="green-9" class="q-ml-sm">Facturable</q-badge>
+                    </q-item-label>
+                    <q-item-label v-if="entry.note" caption>{{ entry.note }}</q-item-label>
+                    <q-item-label caption>
+                      {{ entry.user.name }} &middot; {{ entry.executed_at }}
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side v-if="canManage">
+                    <q-btn flat dense round icon="delete_outline" size="sm" color="grey-5" @click="onDeleteTimeEntry(entry.id)" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
             </q-tab-panel>
 
             <!-- Activity Tab -->
             <q-tab-panel name="activity" class="q-pa-lg">
-              <div class="text-grey-5 text-center q-pa-xl">
+              <q-linear-progress v-if="activitiesLoading" indeterminate color="primary" class="q-mb-md" />
+
+              <div v-if="!activitiesLoading && ticketActivities.length === 0" class="text-grey-5 text-center q-pa-xl">
                 <q-icon name="history" size="48px" class="q-mb-sm" /><br>
-                Historial de actividad del ticket
+                No hay actividad registrada
               </div>
+
+              <div v-else class="activity-timeline">
+                <div v-for="activity in ticketActivities" :key="activity.id" class="activity-entry q-mb-md">
+                  <div class="row no-wrap items-start q-gutter-sm">
+                    <q-avatar size="30px" color="primary" text-color="white" font-size="12px">
+                      <img v-if="activity.user.avatar_url" :src="activity.user.avatar_url" />
+                      <span v-else>{{ activity.user.name.charAt(0).toUpperCase() }}</span>
+                    </q-avatar>
+                    <div class="col">
+                      <div class="text-body2">
+                        <span class="text-weight-bold">{{ activity.user.name }}</span>
+                        {{ ' ' }}
+                        <span>{{ activity.description }}</span>
+                      </div>
+                      <div class="text-caption text-grey">{{ timeAgo(activity.created_at) }} &middot; {{ formatDate(activity.created_at) }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </q-tab-panel>
+
+            <!-- Participants Tab -->
+            <q-tab-panel name="participants" class="q-pa-lg">
+              <div class="text-subtitle2 text-weight-bold q-mb-md">Personas involucradas</div>
+
+              <q-list separator>
+                <q-item v-for="p in participants" :key="p.id">
+                  <q-item-section avatar>
+                    <q-avatar size="36px" :style="{ backgroundColor: getAvatarColor(p.name) }" text-color="white" font-size="15px">
+                      <img v-if="p.avatar_url" :src="p.avatar_url" />
+                      <span v-else>{{ p.name.charAt(0).toUpperCase() }}</span>
+                    </q-avatar>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-weight-medium">{{ p.name }}</q-item-label>
+                    <q-item-label caption>
+                      {{ p.role }}
+                      <span v-if="p.count > 0"> &middot; {{ p.count }} comentario{{ p.count > 1 ? 's' : '' }}</span>
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
             </q-tab-panel>
 
             <!-- Resolution Tab -->
             <q-tab-panel name="resolution" class="q-pa-lg">
-              <div v-if="ticket.resolved_at" class="q-pa-md">
-                <div class="text-subtitle2 q-mb-sm">Resuelto el</div>
-                <div>{{ formatDate(ticket.resolved_at) }}</div>
+              <div v-if="ticket.resolved_at || ticket.closed_at" class="q-mb-lg">
+                <div class="row q-gutter-lg">
+                  <div v-if="ticket.resolved_at">
+                    <div class="text-caption text-grey-6">Resuelto el</div>
+                    <div class="text-weight-medium">{{ formatDate(ticket.resolved_at) }}</div>
+                  </div>
+                  <div v-if="ticket.closed_at">
+                    <div class="text-caption text-grey-6">Cerrado el</div>
+                    <div class="text-weight-medium">{{ formatDate(ticket.closed_at) }}</div>
+                  </div>
+                </div>
               </div>
-              <div v-else class="text-grey-5 text-center q-pa-xl">
-                <q-icon name="task_alt" size="48px" class="q-mb-sm" /><br>
-                Este ticket aun no ha sido resuelto
-              </div>
+
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">Notas de resolución</div>
+              <q-editor
+                v-if="canManage"
+                v-model="resolutionNotes"
+                min-height="120px"
+                placeholder="Describe la solución aplicada, causa raíz, y pasos realizados..."
+                :toolbar="[
+                  ['bold', 'italic', 'underline'],
+                  ['unordered_list', 'ordered_list'],
+                  ['undo', 'redo'],
+                ]"
+              />
+              <div v-else-if="ticket.resolution_notes" class="q-pa-md" style="background: #f5f5f5; border-radius: 8px;" v-html="ticket.resolution_notes"></div>
+              <div v-else class="text-grey-5 q-pa-md">Sin notas de resolución</div>
+
+              <q-btn
+                v-if="canManage"
+                color="primary" no-caps
+                label="Guardar resolución"
+                class="q-mt-md"
+                :loading="savingResolution"
+                :disable="resolutionNotes === (ticket.resolution_notes || '')"
+                @click="onSaveResolution"
+              />
             </q-tab-panel>
           </q-tab-panels>
         </div>
@@ -1283,9 +1777,20 @@ function mdToHtml(text: string): string {
                   </div>
                 </div>
 
-                <!-- Departamento (full width) -->
+                <!-- Grupo & Departamento -->
                 <div class="prop-row">
-                  <div class="prop-field full-width">
+                  <div class="prop-field">
+                    <label class="prop-label">Grupo</label>
+                    <q-select
+                      v-model="editProps.agent_group_id"
+                      :options="agentGroupOptions"
+                      emit-value map-options
+                      dense outlined clearable
+                      :disable="!canManage"
+                      class="prop-select"
+                    />
+                  </div>
+                  <div class="prop-field">
                     <label class="prop-label">Departamento</label>
                     <div class="prop-value-text">{{ ticket.department?.name || 'Sin asignar' }}</div>
                   </div>
@@ -1605,6 +2110,196 @@ function mdToHtml(text: string): string {
           </div>
         </div>
       </div>
+    </q-dialog>
+
+    <!-- Time Entry Dialog -->
+    <q-dialog v-model="showTimeDialog">
+      <q-card style="min-width: 400px;">
+        <q-card-section>
+          <div class="text-h6">Añadir tiempo</div>
+        </q-card-section>
+
+        <q-card-section class="q-gutter-md">
+          <q-input
+            v-model.number="timeForm.hours"
+            type="number"
+            label="Horas *"
+            dense outlined
+            min="0.01"
+            step="0.25"
+            hint="Ej: 1.5 = 1 hora 30 minutos"
+          />
+          <q-input
+            v-model="timeForm.executed_at"
+            type="date"
+            label="Fecha del trabajo *"
+            dense outlined
+          />
+          <q-input
+            v-model="timeForm.note"
+            type="textarea"
+            label="Descripción del trabajo"
+            dense outlined
+            rows="3"
+            placeholder="¿Qué se realizó?"
+          />
+          <q-toggle
+            v-model="timeForm.billable"
+            label="Facturable"
+            color="green"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancelar" v-close-popup />
+          <q-btn
+            color="primary" no-caps
+            label="Registrar tiempo"
+            :loading="timeLoading"
+            :disable="!timeForm.hours || timeForm.hours <= 0"
+            @click="onAddTimeEntry"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Association Dialog -->
+    <q-dialog v-model="showAssocDialog">
+      <q-card style="min-width: 500px;">
+        <q-card-section>
+          <div class="text-h6">
+            Asociar ticket
+            <q-badge color="primary" class="q-ml-sm text-capitalize">
+              {{ assocForm.type === 'parent' ? 'Padre' : assocForm.type === 'child' ? 'Hijo' : assocForm.type === 'cause' ? 'Causa' : 'Relacionado' }}
+            </q-badge>
+          </div>
+        </q-card-section>
+
+        <q-card-section>
+          <q-input
+            v-model="assocForm.search"
+            label="Buscar ticket por número o título"
+            dense outlined
+            @keyup.enter="onSearchTicketsForAssoc"
+          >
+            <template #append>
+              <q-btn flat dense round icon="search" :loading="assocSearching" @click="onSearchTicketsForAssoc" />
+            </template>
+          </q-input>
+
+          <q-list v-if="assocSearchResults.length" separator class="q-mt-md" style="max-height: 300px; overflow: auto;">
+            <q-item v-for="t in assocSearchResults" :key="t.id" clickable @click="onCreateAssociation(t.id)">
+              <q-item-section>
+                <q-item-label>
+                  <span class="text-primary text-weight-medium">{{ t.ticket_number }}</span>
+                  <span class="q-ml-sm">{{ t.title }}</span>
+                </q-item-label>
+                <q-item-label caption>
+                  <q-badge :color="getStatusBadgeColor(t.status)" :label="getStatusLabel(t.status)" class="q-mr-sm" />
+                  {{ t.requester?.name }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn flat dense color="primary" icon="link" size="sm" :loading="assocLoading" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <div v-else-if="assocForm.search && !assocSearching" class="text-grey-5 text-center q-pa-lg">
+            Busca un ticket para asociar
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancelar" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Merge Dialog -->
+    <q-dialog v-model="showMergeDialog">
+      <q-card style="min-width: 500px;">
+        <q-card-section>
+          <div class="text-h6">Combinar tickets</div>
+          <div class="text-caption text-grey q-mt-xs">
+            El ticket seleccionado se combinará en este ticket. Sus comentarios, adjuntos y tiempo serán movidos aquí.
+          </div>
+        </q-card-section>
+
+        <q-card-section>
+          <q-input
+            v-model="mergeSearch"
+            label="Buscar ticket origen por número o título"
+            dense outlined
+            @keyup.enter="onSearchTicketsForMerge"
+          >
+            <template #append>
+              <q-btn flat dense round icon="search" :loading="mergeSearching" @click="onSearchTicketsForMerge" />
+            </template>
+          </q-input>
+
+          <q-list v-if="mergeSearchResults.length" separator class="q-mt-md" style="max-height: 300px; overflow: auto;">
+            <q-item v-for="t in mergeSearchResults" :key="t.id" clickable @click="onMergeTicket(t.id)">
+              <q-item-section>
+                <q-item-label>
+                  <span class="text-primary text-weight-medium">{{ t.ticket_number }}</span>
+                  <span class="q-ml-sm">{{ t.title }}</span>
+                </q-item-label>
+                <q-item-label caption>
+                  <q-badge :color="getStatusBadgeColor(t.status)" :label="getStatusLabel(t.status)" class="q-mr-sm" />
+                  {{ t.requester?.name }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn flat dense color="primary" icon="merge_type" size="sm" :loading="mergeLoading" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancelar" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Scenario Dialog -->
+    <q-dialog v-model="showScenarioDialog">
+      <q-card style="min-width: 400px;">
+        <q-card-section>
+          <div class="text-h6">Ejecutar situación</div>
+          <div class="text-caption text-grey q-mt-xs">Selecciona un escenario para aplicar al ticket</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-list separator>
+            <q-item v-for="s in scenarios" :key="s.id" clickable @click="onRunScenario(s.id)">
+              <q-item-section avatar>
+                <q-icon name="play_circle_outline" color="primary" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-medium">{{ s.name }}</q-item-label>
+                <q-item-label v-if="s.description" caption>{{ s.description }}</q-item-label>
+                <q-item-label caption>
+                  {{ s.actions.length }} acción{{ s.actions.length > 1 ? 'es' : '' }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-spinner v-if="scenarioLoading" size="20px" color="primary" />
+                <q-icon v-else name="chevron_right" color="grey-5" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <div v-if="!scenarios.length" class="text-grey-5 text-center q-pa-lg">
+            No hay escenarios configurados
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cerrar" v-close-popup />
+        </q-card-actions>
+      </q-card>
     </q-dialog>
   </q-page>
 </template>

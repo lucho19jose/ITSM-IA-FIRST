@@ -20,6 +20,10 @@ use App\Http\Controllers\Api\V1\TenantManagementController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PortalController;
+use App\Http\Controllers\Api\V1\TimeEntryController;
+use App\Http\Controllers\Api\V1\TicketAssociationController;
+use App\Http\Controllers\Api\V1\AgentGroupController;
+use App\Http\Controllers\Api\V1\ScenarioController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
@@ -61,6 +65,46 @@ Route::prefix('v1')->group(function () {
         Route::post('tickets/{ticket}/comments', [TicketController::class, 'addComment']);
         Route::post('tickets/{ticket}/attachments', [TicketController::class, 'addAttachments']);
         Route::delete('tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'deleteAttachment']);
+
+        // Time entries
+        Route::middleware('role:admin,agent')->group(function () {
+            Route::get('tickets/{ticket}/time-entries', [TimeEntryController::class, 'index']);
+            Route::post('tickets/{ticket}/time-entries', [TimeEntryController::class, 'store']);
+            Route::put('tickets/{ticket}/time-entries/{entry}', [TimeEntryController::class, 'update']);
+            Route::delete('tickets/{ticket}/time-entries/{entry}', [TimeEntryController::class, 'destroy']);
+        });
+
+        // Ticket associations
+        Route::middleware('role:admin,agent')->group(function () {
+            Route::get('tickets/{ticket}/associations', [TicketAssociationController::class, 'index']);
+            Route::post('tickets/{ticket}/associations', [TicketAssociationController::class, 'store']);
+            Route::delete('tickets/{ticket}/associations/{association}', [TicketAssociationController::class, 'destroy']);
+        });
+
+        // Ticket merge, spam, favorite
+        Route::post('tickets/{ticket}/merge', [TicketController::class, 'merge'])
+            ->middleware('role:admin,agent');
+        Route::post('tickets/{ticket}/spam', [TicketController::class, 'toggleSpam'])
+            ->middleware('role:admin,agent');
+        Route::post('tickets/{ticket}/favorite', [TicketController::class, 'toggleFavorite']);
+
+        // Scenarios
+        Route::middleware('role:admin,agent')->group(function () {
+            Route::get('scenarios', [ScenarioController::class, 'index']);
+            Route::post('scenarios', [ScenarioController::class, 'store']);
+            Route::put('scenarios/{scenario}', [ScenarioController::class, 'update']);
+            Route::delete('scenarios/{scenario}', [ScenarioController::class, 'destroy']);
+            Route::post('tickets/{ticket}/run-scenario', [ScenarioController::class, 'execute']);
+        });
+
+        // Agent Groups
+        Route::get('agent-groups', [AgentGroupController::class, 'index']);
+        Route::middleware('role:admin')->group(function () {
+            Route::post('agent-groups', [AgentGroupController::class, 'store']);
+            Route::get('agent-groups/{agentGroup}', [AgentGroupController::class, 'show']);
+            Route::put('agent-groups/{agentGroup}', [AgentGroupController::class, 'update']);
+            Route::delete('agent-groups/{agentGroup}', [AgentGroupController::class, 'destroy']);
+        });
 
         // Ticket Views (saved filters)
         Route::apiResource('ticket-views', TicketViewController::class)->except(['show']);

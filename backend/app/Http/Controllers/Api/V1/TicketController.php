@@ -195,7 +195,7 @@ class TicketController extends Controller
     {
         $this->authorize('view', $ticket);
 
-        $ticket->load(['category', 'requester', 'assignee', 'department', 'slaPolicy', 'comments.user', 'comments.attachments', 'attachments.user']);
+        $ticket->load(['category', 'requester', 'assignee', 'department', 'slaPolicy', 'comments.user', 'comments.attachments', 'attachments.user', 'timeEntries.user', 'agentGroup']);
 
         return response()->json([
             'data' => new TicketResource($ticket),
@@ -230,6 +230,8 @@ class TicketController extends Controller
             'major_incident_type' => 'nullable|string|max:50',
             'customers_impacted' => 'nullable|integer|min:0',
             'impacted_locations' => 'nullable|array',
+            'resolution_notes' => 'nullable|string|max:5000',
+            'agent_group_id' => 'nullable|exists:agent_groups,id',
         ]);
 
         // Track status transitions
@@ -727,5 +729,119 @@ class TicketController extends Controller
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
+    }
+
+    public function merge(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('update', $ticket);
+
+        $validated = $request->validate([
+            'source_ticket_id' => 'required|integer|exists:tickets,id',
+        ]);
+
+        $source = Ticket::with(['comments', 'attachments', 'timeEntries'])->findOrFail($validated['source_ticket_id']);
+
+        if ($source->id === $ticket->id) {
+            return response()->json(['message' => 'No puede combinar un ticket consigo mismo'], 422);
+        }
+
+        // Move comments from source to target
+        foreach ($source->comments as $comment) {
+            $comment->update(['ticket_id' => $ticket->id]);
+        }
+
+        // Move attachments from source to target
+        foreach ($source->attachments as $attachment) {
+            $attachment->update(['ticket_id' => $ticket->id]);
+        }
+
+        // Move time entries from source to target
+        foreach ($source->timeEntries as $entry) {
+            $entry->update(['ticket_id' => $ticket->id]);
+        }
+
+        // Add merge note to target
+        $ticket->comments()->create([
+            'body' => "Ticket combinado desde <strong>{$source->ticket_number}</strong>: {$source->title}",
+            'is_internal' => true,
+            'user_id' => $request->user()->id,
+            'tenant_id' => app('tenant_id'),
+        ]);
+
+        // Close source ticket
+        $source->update([
+            'status' => 'closed',
+            'closed_at' => now(),
+            'resolved_at' => $source->resolved_at ?? now(),
+        ]);
+
+        // Add note to source
+        $source->comments()->create([
+            'body' => "Este ticket fue combinado en <strong>{$ticket->ticket_number}</strong>: {$ticket->title}",
+            'is_internal' => true,
+            'user_id' => $request->user()->id,
+            'tenant_id' => app('tenant_id'),
+        ]);
+
+        ActivityLogService::log(
+            $request->user(), 'merged', $ticket,
+            "combinó el ticket {$source->ticket_number} en {$ticket->title} ({$ticket->ticket_number})",
+            [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'ticket_title' => $ticket->title,
+                'source_ticket_id' => $source->id,
+                'source_ticket_number' => $source->ticket_number,
+            ]
+        );
+
+        return response()->json([
+            'data' => new TicketResource($ticket->fresh()->load(['category', 'requester', 'assignee', 'department', 'comments.user', 'attachments.user', 'timeEntries.user'])),
+            'message' => "Ticket {$source->ticket_number} combinado exitosamente",
+        ]);
+    }
+
+    public function toggleSpam(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('update', $ticket);
+
+        $ticket->update(['is_spam' => !$ticket->is_spam]);
+
+        $action = $ticket->is_spam ? 'marcó como basura' : 'desmarcó como basura';
+        ActivityLogService::log(
+            $request->user(), 'spam_toggled', $ticket,
+            "{$action} el ticket {$ticket->title} ({$ticket->ticket_number})",
+            ['ticket_id' => $ticket->id, 'ticket_number' => $ticket->ticket_number, 'ticket_title' => $ticket->title, 'is_spam' => $ticket->is_spam]
+        );
+
+        return response()->json([
+            'data' => new TicketResource($ticket->load(['category', 'requester', 'assignee', 'department'])),
+            'message' => $ticket->is_spam ? 'Ticket marcado como basura' : 'Ticket desmarcado como basura',
+        ]);
+    }
+
+    public function toggleFavorite(Request $request, Ticket $ticket): JsonResponse
+    {
+        $userId = $request->user()->id;
+        $exists = \DB::table('ticket_favorites')
+            ->where('user_id', $userId)
+            ->where('ticket_id', $ticket->id)
+            ->exists();
+
+        if ($exists) {
+            \DB::table('ticket_favorites')
+                ->where('user_id', $userId)
+                ->where('ticket_id', $ticket->id)
+                ->delete();
+            return response()->json(['is_favorite' => false, 'message' => 'Eliminado de favoritos']);
+        }
+
+        \DB::table('ticket_favorites')->insert([
+            'user_id' => $userId,
+            'ticket_id' => $ticket->id,
+            'created_at' => now(),
+        ]);
+
+        return response()->json(['is_favorite' => true, 'message' => 'Agregado a favoritos']);
     }
 }

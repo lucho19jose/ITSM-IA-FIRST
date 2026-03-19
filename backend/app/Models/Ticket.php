@@ -6,6 +6,7 @@ use App\Models\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -36,10 +37,11 @@ class Ticket extends Model
         'responded_at', 'resolved_at', 'closed_at', 'due_date',
         'planned_start_date', 'planned_end_date', 'planned_effort',
         'response_due_at', 'resolution_due_at', 'tags', 'custom_fields',
-        'satisfaction_rating', 'satisfaction_comment',
+        'satisfaction_rating', 'satisfaction_comment', 'resolution_notes',
         'approval_status', 'association_type', 'major_incident_type',
         'contact_number', 'requester_location', 'specific_subject',
         'customers_impacted', 'impacted_locations',
+        'agent_group_id', 'is_spam',
     ];
 
     protected function casts(): array
@@ -56,6 +58,7 @@ class Ticket extends Model
             'planned_end_date' => 'datetime',
             'response_due_at' => 'datetime',
             'resolution_due_at' => 'datetime',
+            'is_spam' => 'boolean',
         ];
     }
 
@@ -101,5 +104,25 @@ class Ticket extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
+    }
+
+    public function associations(): HasMany
+    {
+        return $this->hasMany(TicketAssociation::class);
+    }
+
+    public function agentGroup(): BelongsTo
+    {
+        return $this->belongsTo(AgentGroup::class);
+    }
+
+    public function favoritedBy(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'ticket_favorites')->withPivot('created_at');
     }
 }

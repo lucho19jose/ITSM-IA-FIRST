@@ -68,6 +68,18 @@ export function bulkUpdateTickets(data: { ticket_ids: number[]; status?: string;
   return put<{ message: string; count: number }>('tickets/bulk-update', data)
 }
 
+export function mergeTicket(targetId: number, sourceTicketId: number) {
+  return post<{ data: Ticket; message: string }>(`tickets/${targetId}/merge`, { source_ticket_id: sourceTicketId })
+}
+
+export function toggleSpam(ticketId: number) {
+  return post<{ data: Ticket; message: string }>(`tickets/${ticketId}/spam`)
+}
+
+export function toggleFavorite(ticketId: number) {
+  return post<{ is_favorite: boolean; message: string }>(`tickets/${ticketId}/favorite`)
+}
+
 export async function exportTickets(data: {
   fields: string[]
   format?: string
