@@ -1,6 +1,9 @@
-# AutoService — ITSM AI-First para Perú
+# AutoService — ITSM AI-First
 
-**AutoService** es una plataforma ITSM (IT Service Management) con inteligencia artificial nativa, diseñada para empresas medianas en Perú (50–250 empleados). Compite directamente con Freshservice y ServiceNow, ofreciendo IA integrada desde el primer día, precios en soles (PEN) y cumplimiento regulatorio peruano (Ley 29733, SUNAT).
+**AutoService** es una plataforma **open source** de ITSM (IT Service Management) con inteligencia artificial nativa, diseñada para empresas medianas y grandes de cualquier parte del mundo (50+ empleados). Compite directamente con Freshservice y ServiceNow, ofreciendo IA integrada desde el primer día. Incluye soporte nativo para el mercado peruano (precios en soles PEN, cumplimiento Ley 29733, SUNAT), pero puede adaptarse a cualquier región.
+
+> 🌍 **Proyecto open source bajo licencia MIT** — cualquier contribución es bienvenida.
+> ☁️ ¿Prefieres no administrar servidores? Consulta la [Versión Cloud (Pro)](#versión-cloud-pro).
 
 ---
 
@@ -22,6 +25,8 @@
 12. [Base de datos](#base-de-datos)
 13. [Tests](#tests)
 14. [Contribuir](#contribuir)
+15. [Versión Cloud (Pro)](#versión-cloud-pro)
+16. [Licencia](#licencia)
 
 ---
 
@@ -376,6 +381,10 @@ npm run test:watch   # Vitest en modo watch
 
 ## Contribuir
 
+AutoService es un proyecto **open source** y **toda contribución es bienvenida**, sin importar tu ubicación o nivel de experiencia. Puedes contribuir con código, documentación, traducciones, reportes de bugs, ideas o mejoras.
+
+### ¿Cómo contribuir?
+
 1. Haz fork del repositorio y crea una rama desde `main`.
 2. Asegúrate de seguir los patrones del proyecto:
    - Backend: PSR-4, formato con `./vendor/bin/pint`.
@@ -383,3 +392,89 @@ npm run test:watch   # Vitest en modo watch
    - Imports de API en frontend sólo desde `src/api/`, nunca llamadas directas a Axios.
 3. Escribe o actualiza los tests correspondientes.
 4. Abre un Pull Request con descripción clara de los cambios.
+
+### Ideas de contribución
+
+- 🌐 Traducciones a nuevos idiomas
+- 🐛 Reporte y corrección de bugs
+- ✨ Nuevas integraciones con proveedores de IA
+- 📖 Mejoras a la documentación
+- 🧪 Ampliar la cobertura de tests
+- 🔧 Integraciones con herramientas externas (Jira, Slack, Teams, etc.)
+
+---
+
+## Versión Cloud (Pro)
+
+¿No quieres lidiar con servidores, infraestructura ni configuraciones? Existe una **versión de pago totalmente gestionada en la nube** que te da todo listo para usar desde el primer día.
+
+### ¿Qué incluye la versión Pro Cloud?
+
+| Componente | Detalle |
+|---|---|
+| 🖥️ **Infraestructura** | Servidores dedicados de alta disponibilidad, escalado automático |
+| 🤖 **IA lista para usar** | API de Anthropic Claude configurada y optimizada, sin coste adicional por uso de IA |
+| 🗄️ **Base de datos gestionada** | MySQL en la nube con backups automáticos, réplicas y failover |
+| 🔒 **Seguridad y compliance** | SSL/TLS, cifrado en reposo, auditorías de seguridad |
+| 📧 **Email y notificaciones** | SMTP gestionado, integración con proveedores de correo transaccional |
+| 🔄 **Actualizaciones automáticas** | Siempre en la última versión estable, sin downtime |
+| 📊 **Monitoreo y alertas** | Dashboard de salud del sistema, alertas proactivas |
+| 🛠️ **Soporte técnico** | Soporte dedicado con SLA garantizado |
+| 🌎 **Multi-región** | Elección de región de datos (Latinoamérica, EE.UU., Europa) |
+
+### ¿Para quién es la versión Pro?
+
+- Empresas que **no quieren gestionar infraestructura** internamente.
+- Equipos que necesitan **onboarding rápido** (tu instancia lista en minutos).
+- Organizaciones con **requisitos de compliance** que necesitan SLAs garantizados.
+- Empresas **grandes** que requieren escalabilidad sin límite.
+
+> 📩 **¿Te interesa la versión Cloud?** Escríbenos a través de los Issues del repositorio o contacta al equipo del proyecto para obtener información sobre precios y planes.
+
+---
+
+## Licencia
+
+AutoService se distribuye bajo la **licencia MIT**.
+
+### ¿Qué significa la licencia MIT?
+
+La licencia MIT es una de las licencias de software libre más permisivas que existen. En términos simples:
+
+**✅ Puedes:**
+- Usar el software de forma **gratuita**, para cualquier propósito (personal, comercial, educativo, etc.)
+- **Modificar** el código fuente como necesites
+- **Distribuir** copias del software original o modificado
+- **Incorporar** este software en proyectos propietarios o comerciales
+- **Sublicenciar** el software
+
+**📋 Solo debes:**
+- Incluir el aviso de copyright y el texto de la licencia MIT en todas las copias o porciones sustanciales del software
+
+**❌ No incluye:**
+- Garantía de ningún tipo (el software se entrega "tal cual")
+- Responsabilidad de los autores por daños o perjuicios derivados del uso
+
+```
+MIT License
+
+Copyright (c) 2025 AutoService Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
