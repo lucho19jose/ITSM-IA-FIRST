@@ -11,6 +11,7 @@ import { get } from '@/utils/api'
 import { getNotifications, markNotificationRead } from '@/api/notifications'
 import { playNewTicket, playNotification, isSoundEnabled, setSoundEnabled } from '@/utils/sounds'
 import { resetOnboarding } from '@/composables/useOnboarding'
+import RecentActivitiesDrawer from '@/components/RecentActivitiesDrawer.vue'
 
 const { t } = useI18n()
 const $q = useQuasar()
@@ -223,6 +224,8 @@ function toggleSound(val: boolean) {
   soundEnabled.value = val
 }
 
+const showActivities = ref(false)
+
 function restartTour() {
   resetOnboarding()
   window.location.reload()
@@ -267,6 +270,10 @@ function restartTour() {
           class="q-mr-sm gt-xs create-btn"
           to="/tickets/create"
         />
+
+        <q-btn flat round icon="history" color="white" @click="showActivities = true">
+          <q-tooltip>Actividades recientes</q-tooltip>
+        </q-btn>
 
         <q-btn flat round icon="notifications" color="white" @click="onOpenNotifPanel">
           <q-badge v-if="unreadCount > 0" color="red" floating>{{ unreadCount }}</q-badge>
@@ -491,6 +498,8 @@ function restartTour() {
         </template>
       </q-list>
     </q-drawer>
+
+    <RecentActivitiesDrawer v-model="showActivities" />
 
     <q-page-container>
       <router-view :key="$route.path" />

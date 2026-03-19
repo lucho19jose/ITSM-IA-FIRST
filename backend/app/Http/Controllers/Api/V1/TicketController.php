@@ -12,6 +12,8 @@ use App\Models\Ticket;
 use App\Models\TicketAttachment;
 use App\Models\TicketComment;
 use App\Models\SlaPolicy;
+use App\Models\User;
+use App\Services\ActivityLogService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -178,6 +180,12 @@ class TicketController extends Controller
 
         broadcast(new TicketCreated($ticket))->toOthers();
 
+        ActivityLogService::log(
+            $request->user(), 'created', $ticket,
+            "envió un nuevo ticket {$ticket->title} ({$ticket->ticket_number})",
+            ['ticket_id' => $ticket->id, 'ticket_number' => $ticket->ticket_number, 'ticket_title' => $ticket->title]
+        );
+
         return response()->json([
             'data' => new TicketResource($ticket->load(['category', 'requester', 'assignee', 'department'])),
         ], 201);
@@ -249,10 +257,21 @@ class TicketController extends Controller
             }
         }
 
+        // Capture old values for activity log tracking
+        $trackFields = ['status', 'priority', 'planned_start_date', 'planned_end_date'];
+        $oldValues = [];
+        foreach ($trackFields as $f) {
+            if (array_key_exists($f, $validated)) {
+                $oldValues[$f] = $ticket->{$f};
+            }
+        }
+
         $changedFields = array_keys($validated);
         $ticket->update($validated);
 
         broadcast(new TicketUpdated($ticket, $changedFields))->toOthers();
+
+        ActivityLogService::logTicketFieldChanges($request->user(), $ticket, $oldValues, $validated);
 
         return response()->json([
             'data' => new TicketResource($ticket->load(['category', 'requester', 'assignee', 'department'])),
@@ -282,6 +301,19 @@ class TicketController extends Controller
 
         broadcast(new TicketUpdated($ticket, ['assigned_to', 'status']))->toOthers();
 
+        $assignee = User::find($validated['assigned_to']);
+        ActivityLogService::log(
+            $request->user(), 'assigned', $ticket,
+            "asignó el ticket {$ticket->title} ({$ticket->ticket_number}) a {$assignee->name}",
+            [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'ticket_title' => $ticket->title,
+                'assignee_id' => $assignee->id,
+                'assignee_name' => $assignee->name,
+            ]
+        );
+
         return response()->json([
             'data' => new TicketResource($ticket->load(['category', 'requester', 'assignee', 'department'])),
         ]);
@@ -299,6 +331,12 @@ class TicketController extends Controller
 
         broadcast(new TicketUpdated($ticket, ['status', 'closed_at']))->toOthers();
 
+        ActivityLogService::log(
+            $request->user(), 'closed', $ticket,
+            "cerró el ticket {$ticket->title} ({$ticket->ticket_number})",
+            ['ticket_id' => $ticket->id, 'ticket_number' => $ticket->ticket_number, 'ticket_title' => $ticket->title]
+        );
+
         return response()->json([
             'data' => new TicketResource($ticket->load(['category', 'requester', 'assignee', 'department'])),
         ]);
@@ -315,6 +353,12 @@ class TicketController extends Controller
         ]);
 
         broadcast(new TicketUpdated($ticket, ['status']))->toOthers();
+
+        ActivityLogService::log(
+            $request->user(), 'reopened', $ticket,
+            "reabrió el ticket {$ticket->title} ({$ticket->ticket_number})",
+            ['ticket_id' => $ticket->id, 'ticket_number' => $ticket->ticket_number, 'ticket_title' => $ticket->title]
+        );
 
         return response()->json([
             'data' => new TicketResource($ticket->load(['category', 'requester', 'assignee', 'department'])),
@@ -342,6 +386,13 @@ class TicketController extends Controller
         ]);
 
         broadcast(new TicketCommentAdded($comment->load('user')))->toOthers();
+
+        $replyType = $validated['is_internal'] ?? false ? 'una nota interna' : 'una reply';
+        ActivityLogService::log(
+            $request->user(), 'commented', $ticket,
+            "ha enviado {$replyType} al ticket {$ticket->title} ({$ticket->ticket_number})",
+            ['ticket_id' => $ticket->id, 'ticket_number' => $ticket->ticket_number, 'ticket_title' => $ticket->title, 'is_internal' => $validated['is_internal'] ?? false]
+        );
 
         return response()->json([
             'data' => new TicketCommentResource($comment->load('user')),
@@ -461,10 +512,39 @@ class TicketController extends Controller
             }
         }
 
+        // Capture old values for activity log
+        $trackFields = ['status', 'priority'];
+        $oldValues = [];
+        foreach ($trackFields as $f) {
+            if (array_key_exists($f, $validated)) {
+                $oldValues[$f] = $ticket->{$f};
+            }
+        }
+
         $changedFields = array_keys($validated);
         $ticket->update($validated);
 
         broadcast(new TicketUpdated($ticket, $changedFields))->toOthers();
+
+        ActivityLogService::logTicketFieldChanges($request->user(), $ticket, $oldValues, $validated);
+
+        // Log assignment separately if it changed
+        if (isset($validated['assigned_to']) && $validated['assigned_to']) {
+            $assignee = User::find($validated['assigned_to']);
+            if ($assignee) {
+                ActivityLogService::log(
+                    $request->user(), 'assigned', $ticket,
+                    "asignó el ticket {$ticket->title} ({$ticket->ticket_number}) a {$assignee->name}",
+                    [
+                        'ticket_id' => $ticket->id,
+                        'ticket_number' => $ticket->ticket_number,
+                        'ticket_title' => $ticket->title,
+                        'assignee_id' => $assignee->id,
+                        'assignee_name' => $assignee->name,
+                    ]
+                );
+            }
+        }
 
         return response()->json([
             'data' => new TicketResource($ticket->load(['category', 'requester', 'assignee', 'department'])),

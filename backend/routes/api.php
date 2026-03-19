@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\AiController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChatbotController;
@@ -134,6 +135,9 @@ Route::prefix('v1')->group(function () {
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::put('notifications/{id}/read', [NotificationController::class, 'markRead']);
         Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);
+
+        // Activity Logs
+        Route::get('activity-logs', [ActivityLogController::class, 'index']);
 
         // AI endpoints (for tickets)
         Route::post('tickets/{ticket}/classify', [AiController::class, 'classify']);

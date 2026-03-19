@@ -222,6 +222,33 @@ export interface PaginatedResponse<T> {
   }
 }
 
+export interface ActivityLog {
+  id: number
+  user: {
+    id: number
+    name: string
+    avatar_url: string | null
+  }
+  action: 'created' | 'updated' | 'commented' | 'assigned' | 'closed' | 'reopened'
+  subject_type: string
+  subject_id: number
+  description: string
+  properties: {
+    ticket_id?: number
+    ticket_number?: string
+    ticket_title?: string
+    field?: string
+    old_value?: string
+    new_value?: string
+    display_value?: string
+    assignee_id?: number
+    assignee_name?: string
+    is_internal?: boolean
+    [key: string]: unknown
+  } | null
+  created_at: string
+}
+
 export interface AiSuggestion {
   id: number
   type: 'classification' | 'response' | 'kb_generation' | 'chatbot'
