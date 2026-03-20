@@ -10,6 +10,7 @@ import { getCategories } from '@/api/categories'
 import { getAgents } from '@/api/users'
 import { getDepartments } from '@/api/departments'
 import TicketViewsSidebar from '@/components/tickets/TicketViewsSidebar.vue'
+import TicketBoardView from '@/components/tickets/TicketBoardView.vue'
 import type { TicketView } from '@/components/tickets/TicketViewsSidebar.vue'
 import type { Ticket, Category, User, Department } from '@/types'
 
@@ -55,6 +56,32 @@ function onSelectView(view: TicketView) {
 const viewFilters = ref<Record<string, any>>({
   status_not_in: 'resolved,closed',
 })
+
+// --- View Mode ---
+const viewMode = ref<'list' | 'board'>(
+  (localStorage.getItem('autoservice_ticket_view') as 'list' | 'board') || 'list'
+)
+function setViewMode(mode: 'list' | 'board') {
+  viewMode.value = mode
+  localStorage.setItem('autoservice_ticket_view', mode)
+  // For board view, load all tickets (no pagination limit)
+  if (mode === 'board') {
+    perPage.value = 200
+    currentPage.value = 1
+    loadTickets()
+  } else {
+    perPage.value = 15
+    currentPage.value = 1
+    loadTickets()
+  }
+}
+
+function onBoardTicketUpdated(updatedTicket: Ticket) {
+  const idx = tickets.value.findIndex(t => t.id === updatedTicket.id)
+  if (idx !== -1) {
+    tickets.value[idx] = { ...tickets.value[idx], ...updatedTicket }
+  }
+}
 
 // --- State ---
 const loading = ref(false)
@@ -778,7 +805,27 @@ onMounted(async () => {
 
         <q-separator vertical class="q-mx-xs" style="height: 24px;" />
 
+        <!-- View mode toggle: Lista / Tablero -->
+        <q-btn-toggle
+          :model-value="viewMode"
+          @update:model-value="setViewMode($event)"
+          flat dense no-caps
+          toggle-color="primary"
+          size="sm"
+          :options="[
+            { icon: 'view_list', value: 'list', slot: 'list' },
+            { icon: 'view_kanban', value: 'board', slot: 'board' },
+          ]"
+          class="q-mr-xs"
+        >
+          <template v-slot:list><q-tooltip>Lista</q-tooltip></template>
+          <template v-slot:board><q-tooltip>Tablero</q-tooltip></template>
+        </q-btn-toggle>
+
+        <q-separator vertical class="q-mx-xs" style="height: 24px;" />
+
         <q-btn-dropdown
+          v-if="viewMode === 'list'"
           flat
           dense
           no-caps
@@ -800,6 +847,7 @@ onMounted(async () => {
           </q-list>
         </q-btn-dropdown>
         <q-btn
+          v-if="viewMode === 'list'"
           flat dense round
           :icon="sortDirection === 'desc' ? 'arrow_downward' : 'arrow_upward'"
           size="sm"
@@ -949,11 +997,20 @@ onMounted(async () => {
 
       <!-- Main content area: table + optional filter panel -->
       <div class="row no-wrap">
-        <!-- Table area -->
+        <!-- Table/Board area -->
         <div class="col">
           <q-linear-progress v-if="loading" indeterminate color="primary" class="q-mb-xs" />
 
-          <q-markup-table flat separator="horizontal" class="ticket-table" :class="{ 'compact-density': rowDensity === 'compact' }" wrap-cells>
+          <!-- Board View (Kanban) -->
+          <TicketBoardView
+            v-if="viewMode === 'board'"
+            :tickets="tickets"
+            :loading="loading"
+            @ticket-updated="onBoardTicketUpdated"
+          />
+
+          <!-- List View (Table) -->
+          <q-markup-table v-else flat separator="horizontal" class="ticket-table" :class="{ 'compact-density': rowDensity === 'compact' }" wrap-cells>
             <thead>
               <tr>
                 <th style="width: 40px;" />
