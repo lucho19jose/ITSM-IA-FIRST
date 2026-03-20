@@ -120,7 +120,8 @@ const filters = ref({
 const allColumns = [
   { key: 'title', label: t('tickets.subject') },
   { key: 'requester', label: t('tickets.requester') },
-  { key: 'status', label: t('common.status') },
+  { key: 'lifecycle_state', label: 'Estado' },
+  { key: 'status', label: 'Estado del ticket' },
   { key: 'priority', label: t('common.priority') },
   { key: 'assignee', label: t('tickets.assignedTo') },
   { key: 'status_details', label: t('ticketForm.statusDetails') },
@@ -150,7 +151,7 @@ const allColumns = [
   { key: 'contact_number', label: t('ticketForm.contactNumber') },
   { key: 'type', label: t('tickets.type') },
 ]
-const defaultColumns = ['title', 'requester', 'status', 'priority', 'assignee', 'source', 'created_at']
+const defaultColumns = ['title', 'requester', 'lifecycle_state', 'priority', 'status', 'assignee', 'created_at']
 const visibleColumns = ref<string[]>(loadColumns())
 const showColumnDialog = ref(false)
 const columnDialogModel = ref<string[]>([])
@@ -1010,7 +1011,33 @@ onMounted(async () => {
                     </div>
                   </template>
 
-                  <!-- Estado (inline edit) -->
+                  <!-- Lifecycle State (Freshservice-style computed tag) -->
+                  <template v-else-if="colKey === 'lifecycle_state'">
+                    <q-badge
+                      v-if="ticket.lifecycle_state === 'new'"
+                      color="green-2" text-color="green-9"
+                      class="q-pa-xs" style="font-size: 11px;"
+                    >
+                      Nuevo
+                    </q-badge>
+                    <q-badge
+                      v-else-if="ticket.lifecycle_state === 'overdue'"
+                      color="red-2" text-color="red-9"
+                      class="q-pa-xs" style="font-size: 11px;"
+                    >
+                      Atrasadas
+                    </q-badge>
+                    <q-badge
+                      v-else-if="ticket.lifecycle_state === 'requester_replied'"
+                      color="blue-2" text-color="blue-9"
+                      class="q-pa-xs" style="font-size: 11px; white-space: nowrap;"
+                    >
+                      El Solicitante Ha Respondido
+                    </q-badge>
+                    <span v-else class="text-grey-4">-</span>
+                  </template>
+
+                  <!-- Estado del ticket (inline edit) -->
                   <template v-else-if="colKey === 'status'">
                     <template v-if="canInlineEdit">
                       <q-badge :color="getStatusColor(ticket.status)" class="cursor-pointer q-pa-xs" style="font-size: 11px;" @click.stop>

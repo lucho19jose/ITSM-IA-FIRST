@@ -24,7 +24,8 @@ class TicketController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Ticket::with(['category', 'requester', 'assignee', 'department']);
+        $query = Ticket::with(['category', 'requester', 'assignee', 'department'])
+            ->withLastComment();
 
         if ($request->user()->isEndUser()) {
             $query->where('requester_id', $request->user()->id);
