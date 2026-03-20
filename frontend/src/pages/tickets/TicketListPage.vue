@@ -23,7 +23,7 @@ const auth = useAuthStore()
 // --- Views Sidebar ---
 const showViewsSidebar = ref(false)
 const currentViewId = ref('unresolved')
-const currentViewLabel = ref('Todos los tickets sin resolver')
+const currentViewLabel = ref(t('ticketList.allUnresolved'))
 
 function onSelectView(view: TicketView) {
   currentViewId.value = view.id
@@ -147,8 +147,8 @@ const filters = ref({
 const allColumns = [
   { key: 'title', label: t('tickets.subject') },
   { key: 'requester', label: t('tickets.requester') },
-  { key: 'lifecycle_state', label: 'Estado' },
-  { key: 'status', label: 'Estado del ticket' },
+  { key: 'lifecycle_state', label: t('tickets.lifecycle.lifecycleState') },
+  { key: 'status', label: t('tickets.lifecycle.ticketStatus') },
   { key: 'priority', label: t('common.priority') },
   { key: 'assignee', label: t('tickets.assignedTo') },
   { key: 'status_details', label: t('ticketForm.statusDetails') },
@@ -353,9 +353,9 @@ async function doExport() {
     link.click()
     window.URL.revokeObjectURL(url)
     showExportPanel.value = false
-    $q.notify({ type: 'positive', message: 'Exportacion completada', timeout: 2000 })
+    $q.notify({ type: 'positive', message: t('ticketList.exportComplete'), timeout: 2000 })
   } catch {
-    $q.notify({ type: 'negative', message: 'Error al exportar tickets' })
+    $q.notify({ type: 'negative', message: t('ticketList.exportError') })
   } finally {
     exportLoading.value = false
   }
@@ -452,13 +452,13 @@ const priorityValues = ['low', 'medium', 'high', 'urgent'] as const
 const typeValues = ['incident', 'request', 'problem', 'change'] as const
 const sourceValues = ['portal', 'email', 'chatbot', 'catalog', 'api', 'phone'] as const
 
-const sourceConfig: Record<string, { icon: string; color: string; label: string }> = {
-  portal: { icon: 'language', color: 'primary', label: 'Portal' },
-  email: { icon: 'email', color: 'orange', label: 'Email' },
-  chatbot: { icon: 'smart_toy', color: 'purple', label: 'Chatbot' },
-  catalog: { icon: 'storefront', color: 'teal', label: 'Catálogo' },
-  api: { icon: 'api', color: 'cyan', label: 'API' },
-  phone: { icon: 'phone', color: 'green', label: 'Teléfono' },
+const sourceConfig: Record<string, { icon: string; color: string }> = {
+  portal: { icon: 'language', color: 'primary' },
+  email: { icon: 'email', color: 'orange' },
+  chatbot: { icon: 'smart_toy', color: 'purple' },
+  catalog: { icon: 'storefront', color: 'teal' },
+  api: { icon: 'api', color: 'cyan' },
+  phone: { icon: 'phone', color: 'green' },
 }
 
 function getStatusColor(status: string): string {
@@ -561,7 +561,7 @@ async function loadTickets() {
     const ids = new Set(res.data.map((t: Ticket) => t.id))
     selectedIds.value = selectedIds.value.filter(id => ids.has(id))
   } catch {
-    $q.notify({ type: 'negative', message: 'Error al cargar tickets' })
+    $q.notify({ type: 'negative', message: t('ticketList.loadError') })
   } finally {
     loading.value = false
   }
@@ -573,10 +573,10 @@ async function inlineUpdateStatus(ticket: Ticket, newStatus: string) {
   ticket.status = newStatus as Ticket['status']
   try {
     await quickUpdateTicket(ticket.id, { status: newStatus })
-    $q.notify({ type: 'positive', message: 'Estado actualizado', timeout: 1500 })
+    $q.notify({ type: 'positive', message: t('ticketList.statusUpdated'), timeout: 1500 })
   } catch {
     ticket.status = old as Ticket['status']
-    $q.notify({ type: 'negative', message: 'Error al actualizar estado' })
+    $q.notify({ type: 'negative', message: t('ticketList.statusError') })
   }
 }
 
@@ -585,10 +585,10 @@ async function inlineUpdatePriority(ticket: Ticket, newPriority: string) {
   ticket.priority = newPriority as Ticket['priority']
   try {
     await quickUpdateTicket(ticket.id, { priority: newPriority })
-    $q.notify({ type: 'positive', message: 'Prioridad actualizada', timeout: 1500 })
+    $q.notify({ type: 'positive', message: t('ticketList.priorityUpdated'), timeout: 1500 })
   } catch {
     ticket.priority = old as Ticket['priority']
-    $q.notify({ type: 'negative', message: 'Error al actualizar prioridad' })
+    $q.notify({ type: 'negative', message: t('ticketList.priorityError') })
   }
 }
 
@@ -603,7 +603,7 @@ async function inlineUpdateAssignee(ticket: Ticket, agentId: number | null) {
   } catch {
     ticket.assigned_to = old
     ticket.assignee = oldAssignee
-    $q.notify({ type: 'negative', message: 'Error al actualizar asignación' })
+    $q.notify({ type: 'negative', message: t('ticketList.assignError') })
   }
 }
 
@@ -853,7 +853,7 @@ onMounted(async () => {
           size="sm"
           @click="toggleSortDirection"
         >
-          <q-tooltip>{{ sortDirection === 'desc' ? 'Descendente' : 'Ascendente' }}</q-tooltip>
+          <q-tooltip>{{ sortDirection === 'desc' ? t('time.descending') : t('time.ascending') }}</q-tooltip>
         </q-btn>
 
         <q-space />
@@ -1075,21 +1075,21 @@ onMounted(async () => {
                       color="green-2" text-color="green-9"
                       class="q-pa-xs" style="font-size: 11px;"
                     >
-                      Nuevo
+                      {{ t('tickets.lifecycle.new') }}
                     </q-badge>
                     <q-badge
                       v-else-if="ticket.lifecycle_state === 'overdue'"
                       color="red-2" text-color="red-9"
                       class="q-pa-xs" style="font-size: 11px;"
                     >
-                      Atrasadas
+                      {{ t('tickets.lifecycle.overdue') }}
                     </q-badge>
                     <q-badge
                       v-else-if="ticket.lifecycle_state === 'requester_replied'"
                       color="blue-2" text-color="blue-9"
                       class="q-pa-xs" style="font-size: 11px; white-space: nowrap;"
                     >
-                      El Solicitante Ha Respondido
+                      {{ t('tickets.lifecycle.requesterReplied') }}
                     </q-badge>
                     <span v-else class="text-grey-4">-</span>
                   </template>
@@ -1162,7 +1162,7 @@ onMounted(async () => {
                   <!-- Fuente -->
                   <template v-else-if="colKey === 'source'">
                     <q-chip dense size="sm" :icon="sourceConfig[ticket.source]?.icon || 'help'" :color="sourceConfig[ticket.source]?.color || 'grey'" text-color="white" class="q-ma-none">
-                      {{ sourceConfig[ticket.source]?.label || ticket.source }}
+                      {{ t('tickets.sources.' + ticket.source) }}
                     </q-chip>
                   </template>
 
@@ -1412,7 +1412,7 @@ onMounted(async () => {
               <div class="text-caption text-grey-7 text-weight-medium q-mb-xs">{{ t('ticketForm.source') }}</div>
               <q-select
                 v-model="filters.source"
-                :options="[{ label: 'Todas', value: null }, ...sourceValues.map(s => ({ label: sourceConfig[s]?.label || s, value: s }))]"
+                :options="[{ label: 'Todas', value: null }, ...sourceValues.map(s => ({ label: t('tickets.sources.' + s), value: s }))]"
                 dense outlined emit-value map-options
                 class="q-mb-md"
               />

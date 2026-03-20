@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { quickUpdateTicket } from '@/api/tickets'
 import { Notify } from 'quasar'
 import type { Ticket } from '@/types'
@@ -14,6 +15,7 @@ const emit = defineEmits<{
   'ticket-updated': [ticket: Ticket]
 }>()
 
+const { t } = useI18n()
 const router = useRouter()
 const draggingTicketId = ref<number | null>(null)
 const dropTargetStatus = ref<string | null>(null)
@@ -42,33 +44,26 @@ function getPriorityDot(priority: string): string {
 }
 
 function getPriorityLabel(priority: string): string {
-  const labels: Record<string, string> = {
-    low: 'Baja', medium: 'Media', high: 'Alta', urgent: 'Urgente',
-  }
-  return labels[priority] || priority
+  return t('tickets.priorities.' + priority)
 }
 
 function getStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    open: 'Abierto', in_progress: 'En Progreso', pending: 'Pendiente',
-    resolved: 'Resuelto', closed: 'Cerrado',
-  }
-  return labels[status] || status
+  return t('tickets.statuses.' + status)
 }
 
 function getSlaText(ticket: Ticket): { text: string; overdue: boolean } | null {
   if (!ticket.resolution_due_at) return null
   if (ticket.status === 'resolved' || ticket.status === 'closed') {
-    return { text: 'Resuelto a tiempo', overdue: false }
+    return { text: t('tickets.board.resolvedOnTime'), overdue: false }
   }
   const diff = new Date(ticket.resolution_due_at).getTime() - Date.now()
   if (diff < 0) {
     const days = Math.abs(Math.floor(diff / 86400000))
-    return { text: days > 0 ? `Atrasado ${days}d` : 'Atrasado', overdue: true }
+    return { text: days > 0 ? t('tickets.board.overdueBy', { n: days }) : t('tickets.board.overdueShort'), overdue: true }
   }
   const days = Math.floor(diff / 86400000)
   const hours = Math.floor((diff % 86400000) / 3600000)
-  return { text: days > 0 ? `${days}d ${hours}h restantes` : `${hours}h restantes`, overdue: false }
+  return { text: days > 0 ? t('tickets.board.daysRemaining', { d: days, h: hours }) : t('tickets.board.hoursRemaining', { h: hours }), overdue: false }
 }
 
 function getAvatarColor(name?: string): string {
@@ -126,9 +121,9 @@ async function onDrop(e: DragEvent, newStatus: string) {
   try {
     const res = await quickUpdateTicket(ticketId, { status: newStatus })
     emit('ticket-updated', res.data)
-    Notify.create({ type: 'positive', message: `Ticket movido a ${getStatusLabel(newStatus)}`, timeout: 2000 })
+    Notify.create({ type: 'positive', message: t('tickets.board.movedTo', { status: getStatusLabel(newStatus) }), timeout: 2000 })
   } catch {
-    Notify.create({ type: 'negative', message: 'Error al cambiar estado' })
+    Notify.create({ type: 'negative', message: t('tickets.board.errorMoving') })
   }
 }
 </script>
@@ -147,7 +142,7 @@ async function onDrop(e: DragEvent, newStatus: string) {
       <!-- Column header -->
       <div class="column-header">
         <div class="column-header-bar" :style="{ backgroundColor: col.color }" />
-        <span class="column-title">{{ col.label }}</span>
+        <span class="column-title">{{ t('tickets.statuses.' + col.key) }}</span>
         <q-badge color="grey-4" text-color="grey-8" class="q-ml-sm">
           {{ ticketsByStatus[col.key]?.length || 0 }}
         </q-badge>
@@ -217,7 +212,7 @@ async function onDrop(e: DragEvent, newStatus: string) {
 
         <!-- Empty column -->
         <div v-if="!ticketsByStatus[col.key]?.length && !loading" class="card-empty text-grey-5 text-caption text-center q-pa-md">
-          Sin tickets
+          {{ t('tickets.board.noTickets') }}
         </div>
       </div>
     </div>
