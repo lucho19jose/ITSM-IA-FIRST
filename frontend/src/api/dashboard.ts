@@ -11,6 +11,9 @@ export interface DashboardSummary {
   unassigned_tickets: number
   avg_response_time: number
   sla_compliance: number
+  csat_average: number | null
+  csat_response_rate: number
+  csat_total_surveys: number
 }
 
 export function getDashboardSummary() {

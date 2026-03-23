@@ -1,0 +1,106 @@
+---
+title: "Base de Conocimiento"
+description: "Crea y organiza artículos de ayuda con búsqueda inteligente potenciada por IA."
+order: 13
+section: "Funcionalidades"
+locale: es
+---
+
+# Base de Conocimiento
+
+La Base de Conocimiento (KB) es la biblioteca de artículos de ayuda de AutoService. Los usuarios pueden consultar soluciones antes de crear un ticket, y la IA usa estos artículos para sugerir respuestas.
+
+## Crear artículos
+
+```
+Panel Admin → Base de Conocimiento → Nuevo Artículo
+```
+
+Cada artículo tiene:
+
+- **Título** — Descriptivo y claro (ej: "Cómo restablecer tu contraseña")
+- **Contenido** — Editor rico con markdown, imágenes, videos y código
+- **Categoría** — Organiza en secciones lógicas
+- **Tags** — Para búsqueda y clasificación
+- **Visibilidad** — Público (todos) o Interno (solo agentes)
+- **Estado** — Borrador o Publicado
+
+### Buenas prácticas para artículos
+
+1. **Un problema, un artículo** — Mantén artículos enfocados
+2. **Título como pregunta** — "¿Cómo configuro el VPN?" es mejor que "Configuración VPN"
+3. **Pasos numerados** — Los usuarios escanean, no leen
+4. **Incluye capturas** — Una imagen vale más que mil palabras
+5. **Mantén actualizado** — Revisa artículos cada trimestre
+
+## Organización
+
+### Categorías
+
+Organiza artículos en una jerarquía de categorías:
+
+```
+📁 Accesos y Contraseñas
+   📄 Cómo restablecer tu contraseña
+   📄 Cómo activar 2FA
+   📄 Solicitar acceso a un sistema
+📁 Software
+   📁 ERP
+      📄 Error al generar reportes
+      📄 Configurar impresora fiscal
+   📁 Email
+      📄 Configurar firma de correo
+      📄 Reglas de bandeja de entrada
+📁 Hardware
+   📄 Solicitar equipo nuevo
+   📄 Configurar monitor externo
+```
+
+### Artículos destacados
+
+Marca artículos como "destacados" para que aparezcan primero en el portal de soporte.
+
+## Búsqueda inteligente
+
+La búsqueda de la KB usa IA para:
+
+- **Búsqueda semántica** — Encuentra artículos por significado, no solo por palabras exactas
+- **Sinónimos** — "laptop" encuentra artículos sobre "notebook" y "portátil"
+- **Auto-sugerencia** — Mientras el usuario escribe un ticket, sugiere artículos relevantes
+
+### Deflexión de tickets
+
+Cuando un usuario está creando un ticket, AutoService muestra artículos relevantes automáticamente. Si el artículo resuelve el problema, el usuario puede cerrar el formulario sin crear el ticket.
+
+> **Métrica:** La tasa de deflexión mide cuántos tickets se evitaron gracias a la KB. El promedio de nuestros clientes es 23%.
+
+## IA y Knowledge Base
+
+### Sugerencias para agentes
+
+Cuando un agente abre un ticket, la barra lateral muestra artículos de KB relacionados. El agente puede:
+- Enviar el artículo directamente al usuario
+- Copiar fragmentos relevantes en su respuesta
+- Marcar el artículo como "resolvió este ticket"
+
+### Generación de artículos
+
+AutoService puede sugerir la creación de artículos basándose en:
+- Tickets que se repiten con frecuencia
+- Respuestas de agentes que resolvieron múltiples tickets similares
+
+## Métricas de KB
+
+```
+Panel Admin → Reportes → Base de Conocimiento
+```
+
+- **Artículos más vistos** — Los más consultados
+- **Artículos más útiles** — Mejor calificados por usuarios
+- **Tasa de deflexión** — Tickets evitados
+- **Artículos sin vistas** — Candidatos a eliminar o mejorar
+- **Búsquedas sin resultados** — Temas que necesitan nuevos artículos
+
+---
+
+**Siguiente:** [Reportes y Analítica →](/docs/reportes)

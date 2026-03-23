@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\CheckRole::class,
             'super_admin' => \App\Http\Middleware\SuperAdmin::class,
             'subdomain' => \App\Http\Middleware\ResolveSubdomainTenant::class,
+            'plan.limits' => \App\Http\Middleware\CheckPlanLimits::class,
+            'check.feature' => \App\Http\Middleware\CheckFeature::class,
         ]);
         $middleware->api(prepend: [
             \App\Http\Middleware\ResolveSubdomainTenant::class,

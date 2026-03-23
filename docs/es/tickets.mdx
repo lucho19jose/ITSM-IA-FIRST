@@ -1,0 +1,124 @@
+---
+title: "Gestión de Tickets"
+description: "Aprende a crear, gestionar y resolver tickets de soporte en AutoService."
+order: 10
+section: "Funcionalidades"
+locale: es
+---
+
+# Gestión de Tickets
+
+Los tickets son la unidad fundamental de trabajo en AutoService. Cada solicitud de soporte se convierte en un ticket que puede ser rastreado, clasificado y resuelto.
+
+## Crear un ticket
+
+### Desde el portal web
+Los usuarios finales acceden a `tu-empresa.autoservice.pe/portal` y completan el formulario:
+
+- **Asunto** — Descripción breve del problema
+- **Descripción** — Detalle completo con contexto
+- **Categoría** (opcional) — La IA la asigna automáticamente si no se selecciona
+- **Archivos adjuntos** — Capturas de pantalla, logs, etc.
+
+### Desde email
+Configura un email de soporte (ej: `soporte@tu-empresa.com`) que cree tickets automáticamente. El asunto del email se convierte en el título y el cuerpo en la descripción.
+
+### Desde la API
+```bash
+curl -X POST https://tu-empresa.autoservice.pe/api/v1/tickets \
+  -H "Authorization: Bearer TU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "No puedo acceder al ERP",
+    "description": "Aparece error 503 desde esta mañana",
+    "requester_email": "usuario@empresa.com"
+  }'
+```
+
+## Ciclo de vida de un ticket
+
+```
+Nuevo → Abierto → En Progreso → Pendiente → Resuelto → Cerrado
+                       ↑              │
+                       └──────────────┘
+                      (reabierto por usuario)
+```
+
+| Estado | Descripción |
+|--------|-------------|
+| **Nuevo** | Recién creado, pendiente de asignación |
+| **Abierto** | Asignado a un agente |
+| **En Progreso** | El agente está trabajando en él |
+| **Pendiente** | Esperando respuesta del usuario |
+| **Resuelto** | Solución proporcionada |
+| **Cerrado** | Confirmado como resuelto (automático tras 48h) |
+
+## Clasificación con IA
+
+Cuando llega un nuevo ticket, el motor de IA analiza el contenido y automáticamente:
+
+1. **Asigna categoría** — Redes, Software, Hardware, Accesos, etc.
+2. **Determina prioridad** — Baja, Media, Alta, Crítica
+3. **Enruta al equipo** — Basado en categoría y disponibilidad
+4. **Sugiere respuestas** — Busca tickets similares resueltos y artículos de KB
+
+> **Precisión:** El modelo de IA alcanza más del 95% de precisión en clasificación después de las primeras 100 muestras de entrenamiento.
+
+## Campos del ticket
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `subject` | texto | Título del ticket |
+| `description` | texto rico | Descripción detallada |
+| `status` | enum | Estado actual del ticket |
+| `priority` | enum | Baja, Media, Alta, Crítica |
+| `category` | relación | Categoría asignada |
+| `assigned_team` | relación | Equipo responsable |
+| `assigned_agent` | relación | Agente asignado |
+| `requester` | relación | Usuario que creó el ticket |
+| `sla_due_at` | datetime | Fecha límite según SLA |
+| `tags` | array | Etiquetas personalizadas |
+| `custom_fields` | JSON | Campos personalizados |
+
+## Acciones sobre tickets
+
+### Responder
+Agrega una respuesta visible para el usuario final. Puedes usar respuestas sugeridas por la IA o respuestas predefinidas (macros).
+
+### Nota interna
+Agrega una nota visible solo para el equipo de soporte. Útil para documentar el progreso de resolución.
+
+### Reasignar
+Transfiere el ticket a otro agente o equipo. El historial se mantiene completo.
+
+### Fusionar
+Combina tickets duplicados en uno solo, conservando todo el historial de conversación.
+
+### Dividir
+Crea nuevos tickets a partir de un ticket existente cuando contiene múltiples problemas.
+
+## Filtros y vistas
+
+AutoService incluye filtros potentes para organizar tickets:
+
+- **Mis tickets** — Asignados a ti
+- **Sin asignar** — Pendientes de asignación
+- **Vencidos** — Con SLA expirado
+- **Por prioridad** — Crítica, Alta, Media, Baja
+- **Por categoría** — Filtro por categoría específica
+- **Personalizados** — Crea tus propios filtros y guárdalos
+
+## Automatizaciones
+
+Configura reglas para automatizar acciones:
+
+```
+SI prioridad = "Crítica" Y categoría = "Infraestructura"
+ENTONCES asignar a equipo "Infra & Redes"
+       Y enviar notificación a Slack
+       Y establecer SLA = 1 hora
+```
+
+---
+
+**Siguiente:** [Clasificación con IA →](/docs/ia-clasificacion)

@@ -8,12 +8,19 @@ use App\Events\TicketCommentAdded;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TicketResource;
 use App\Http\Resources\TicketCommentResource;
+use App\Mail\SatisfactionSurveyMail;
+use App\Mail\TicketAssignedMail;
+use App\Mail\TicketClosedMail;
+use App\Models\NotificationPreference;
+use App\Models\SatisfactionSurvey;
 use App\Models\Ticket;
 use App\Models\TicketAttachment;
 use App\Models\TicketComment;
 use App\Models\SlaPolicy;
 use App\Models\User;
 use App\Services\ActivityLogService;
+use App\Services\BusinessHourService;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +29,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TicketController extends Controller
 {
+    public function __construct(
+        private BusinessHourService $businessHourService,
+    ) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Ticket::with(['category', 'requester', 'assignee', 'department']);
@@ -149,6 +160,7 @@ class TicketController extends Controller
             'major_incident_type' => 'nullable|string|max:50',
             'customers_impacted' => 'nullable|integer|min:0',
             'impacted_locations' => 'nullable|array',
+            'asset_id' => 'nullable|exists:assets,id',
         ]);
 
         $validated['requester_id'] = $request->user()->id;
@@ -167,8 +179,9 @@ class TicketController extends Controller
         $sla = SlaPolicy::where('priority', $priority)->where('is_active', true)->first();
         if ($sla) {
             $validated['sla_policy_id'] = $sla->id;
-            $validated['response_due_at'] = now()->addMinutes($sla->response_time);
-            $validated['resolution_due_at'] = now()->addMinutes($sla->resolution_time);
+            $bh = $sla->businessHour;
+            $validated['response_due_at'] = $this->businessHourService->calculateDeadline(now(), $sla->response_time, $bh);
+            $validated['resolution_due_at'] = $this->businessHourService->calculateDeadline(now(), $sla->resolution_time, $bh);
         }
 
         $ticket = Ticket::create($validated);
@@ -195,7 +208,7 @@ class TicketController extends Controller
     {
         $this->authorize('view', $ticket);
 
-        $ticket->load(['category', 'requester', 'assignee', 'department', 'slaPolicy', 'comments.user', 'comments.attachments', 'attachments.user', 'timeEntries.user', 'agentGroup']);
+        $ticket->load(['category', 'requester', 'assignee', 'department', 'slaPolicy', 'comments.user', 'comments.attachments', 'attachments.user', 'timeEntries.user', 'agentGroup', 'asset.assetType']);
 
         return response()->json([
             'data' => new TicketResource($ticket),
@@ -232,6 +245,7 @@ class TicketController extends Controller
             'impacted_locations' => 'nullable|array',
             'resolution_notes' => 'nullable|string|max:5000',
             'agent_group_id' => 'nullable|exists:agent_groups,id',
+            'asset_id' => 'nullable|exists:assets,id',
         ]);
 
         // Track status transitions
@@ -252,10 +266,11 @@ class TicketController extends Controller
             $sla = SlaPolicy::where('priority', $validated['priority'])->where('is_active', true)->first();
             if ($sla) {
                 $validated['sla_policy_id'] = $sla->id;
+                $bh = $sla->businessHour;
                 if (!$ticket->responded_at) {
-                    $validated['response_due_at'] = $ticket->created_at->addMinutes($sla->response_time);
+                    $validated['response_due_at'] = $this->businessHourService->calculateDeadline($ticket->created_at, $sla->response_time, $bh);
                 }
-                $validated['resolution_due_at'] = $ticket->created_at->addMinutes($sla->resolution_time);
+                $validated['resolution_due_at'] = $this->businessHourService->calculateDeadline($ticket->created_at, $sla->resolution_time, $bh);
             }
         }
 
@@ -316,6 +331,14 @@ class TicketController extends Controller
             ]
         );
 
+        // Queue assignment email to the agent
+        if ($assignee && $assignee->email) {
+            $prefs = NotificationPreference::getOrCreate($assignee->id, $ticket->tenant_id);
+            if ($prefs->wantsEmail('ticket_assigned')) {
+                Mail::to($assignee->email)->queue(new TicketAssignedMail($ticket, $assignee));
+            }
+        }
+
         return response()->json([
             'data' => new TicketResource($ticket->load(['category', 'requester', 'assignee', 'department'])),
         ]);
@@ -338,6 +361,29 @@ class TicketController extends Controller
             "cerró el ticket {$ticket->title} ({$ticket->ticket_number})",
             ['ticket_id' => $ticket->id, 'ticket_number' => $ticket->ticket_number, 'ticket_title' => $ticket->title]
         );
+
+        // Queue closed email to the requester
+        $ticket->loadMissing('requester');
+        $requester = $ticket->requester;
+        if ($requester && $requester->email) {
+            $prefs = NotificationPreference::getOrCreate($requester->id, $ticket->tenant_id);
+            if ($prefs->wantsEmail('ticket_closed')) {
+                Mail::to($requester->email)->queue(new TicketClosedMail($ticket));
+            }
+        }
+
+        // Create satisfaction survey and send email to requester
+        if ($requester && $requester->email && !SatisfactionSurvey::withoutGlobalScopes()->where('ticket_id', $ticket->id)->exists()) {
+            $survey = SatisfactionSurvey::create([
+                'tenant_id' => $ticket->tenant_id,
+                'ticket_id' => $ticket->id,
+                'user_id' => $ticket->requester_id,
+                'sent_at' => now(),
+            ]);
+
+            Mail::to($requester->email)
+                ->queue(new SatisfactionSurveyMail($survey, $ticket));
+        }
 
         return response()->json([
             'data' => new TicketResource($ticket->load(['category', 'requester', 'assignee', 'department'])),
@@ -445,10 +491,11 @@ class TicketController extends Controller
                 $sla = \App\Models\SlaPolicy::where('priority', $updateData['priority'])->where('is_active', true)->first();
                 if ($sla) {
                     $updateData['sla_policy_id'] = $sla->id;
+                    $bh = $sla->businessHour;
                     if (!$ticket->responded_at) {
-                        $updateData['response_due_at'] = $ticket->created_at->addMinutes($sla->response_time);
+                        $updateData['response_due_at'] = $this->businessHourService->calculateDeadline($ticket->created_at, $sla->response_time, $bh);
                     }
-                    $updateData['resolution_due_at'] = $ticket->created_at->addMinutes($sla->resolution_time);
+                    $updateData['resolution_due_at'] = $this->businessHourService->calculateDeadline($ticket->created_at, $sla->resolution_time, $bh);
                 }
             }
 
@@ -499,10 +546,11 @@ class TicketController extends Controller
             $sla = \App\Models\SlaPolicy::where('priority', $validated['priority'])->where('is_active', true)->first();
             if ($sla) {
                 $validated['sla_policy_id'] = $sla->id;
+                $bh = $sla->businessHour;
                 if (!$ticket->responded_at) {
-                    $validated['response_due_at'] = $ticket->created_at->addMinutes($sla->response_time);
+                    $validated['response_due_at'] = $this->businessHourService->calculateDeadline($ticket->created_at, $sla->response_time, $bh);
                 }
-                $validated['resolution_due_at'] = $ticket->created_at->addMinutes($sla->resolution_time);
+                $validated['resolution_due_at'] = $this->businessHourService->calculateDeadline($ticket->created_at, $sla->resolution_time, $bh);
             }
         }
 

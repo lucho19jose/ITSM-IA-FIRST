@@ -11,6 +11,7 @@ import { get } from '@/utils/api'
 import { getNotifications, markNotificationRead } from '@/api/notifications'
 import { playNewTicket, playNotification, isSoundEnabled, setSoundEnabled } from '@/utils/sounds'
 import { resetOnboarding } from '@/composables/useOnboarding'
+import { getMyPendingApprovals } from '@/api/approvals'
 import RecentActivitiesDrawer from '@/components/RecentActivitiesDrawer.vue'
 
 const { t } = useI18n()
@@ -46,8 +47,14 @@ watch(
 const menuItems = [
   { icon: 'dashboard', label: 'nav.dashboard', to: '/dashboard' },
   { icon: 'confirmation_number', label: 'nav.tickets', to: '/tickets' },
+  { icon: 'bug_report', label: 'nav.problems', to: '/problems' },
+  { icon: 'swap_horiz', label: 'nav.changes', to: '/changes' },
+  { icon: 'calendar_month', label: 'nav.changeCalendar', to: '/changes/calendar' },
+  { icon: 'warning', label: 'nav.knownErrors', to: '/problems/known-errors' },
+  { icon: 'inventory_2', label: 'nav.assets', to: '/assets' },
   { icon: 'menu_book', label: 'nav.kb', to: '/kb' },
   { icon: 'storefront', label: 'nav.catalog', to: '/catalog' },
+  { icon: 'fact_check', label: 'nav.approvals', to: '/approvals', badge: true },
 ]
 
 const adminItems = [
@@ -55,6 +62,11 @@ const adminItems = [
   { icon: 'category', label: 'nav.categories', to: '/settings/categories' },
   { icon: 'timer', label: 'nav.sla', to: '/settings/sla' },
   { icon: 'dynamic_form', label: 'nav.ticketForm', to: '/settings/ticket-form' },
+  { icon: 'quickreply', label: 'nav.cannedResponses', to: '/settings/canned-responses' },
+  { icon: 'devices', label: 'nav.assetTypes', to: '/settings/asset-types' },
+  { icon: 'hub', label: 'nav.integrations', to: '/settings/integrations' },
+  { icon: 'smart_toy', label: 'nav.automation', to: '/settings/automation-rules' },
+  { icon: 'approval', label: 'nav.approvalWorkflows', to: '/settings/approval-workflows' },
   { icon: 'settings', label: 'nav.settings', to: '/settings' },
   { icon: 'assessment', label: 'nav.reports', to: '/reports' },
 ]
@@ -225,6 +237,16 @@ function toggleSound(val: boolean) {
 }
 
 const showActivities = ref(false)
+
+// ─── Pending approvals badge ─────────────────────────────────────────────────
+const pendingApprovalsCount = ref(0)
+
+onMounted(async () => {
+  try {
+    const res = await getMyPendingApprovals()
+    pendingApprovalsCount.value = res.data?.length ?? 0
+  } catch { /* ignore */ }
+})
 
 function restartTour() {
   resetOnboarding()
@@ -477,7 +499,25 @@ function restartTour() {
             <q-icon :name="item.icon" />
           </q-item-section>
           <q-item-section>{{ t(item.label) }}</q-item-section>
+          <q-item-section v-if="(item as any).badge && pendingApprovalsCount > 0" side>
+            <q-badge color="red" :label="pendingApprovalsCount" />
+          </q-item-section>
         </q-item>
+
+        <template v-if="auth.isAgent && !auth.isAdmin">
+          <q-separator class="q-my-sm" />
+          <q-item
+            to="/settings/canned-responses"
+            clickable
+            v-ripple
+            active-class="text-primary bg-blue-1"
+          >
+            <q-item-section avatar>
+              <q-icon name="quickreply" />
+            </q-item-section>
+            <q-item-section>{{ t('nav.cannedResponses') }}</q-item-section>
+          </q-item>
+        </template>
 
         <template v-if="auth.isAdmin">
           <q-separator class="q-my-sm" />

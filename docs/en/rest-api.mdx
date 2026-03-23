@@ -1,0 +1,109 @@
+---
+title: "REST API"
+description: "AutoService REST API documentation for integrating with your existing systems."
+order: 20
+section: "Integrations"
+locale: en
+---
+
+# REST API
+
+AutoService exposes a complete REST API. All operations available in the web interface are also available via API.
+
+## Authentication
+
+Bearer token authentication:
+
+```bash
+curl https://your-company.autoservice.pe/api/v1/tickets \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+Generate tokens at: `Admin Panel → Settings → API → Generate Token`
+
+## Base URL
+
+```
+https://your-company.autoservice.pe/api/v1
+```
+
+## Main endpoints
+
+### Tickets
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/tickets` | List tickets |
+| `POST` | `/tickets` | Create ticket |
+| `GET` | `/tickets/:id` | Get ticket |
+| `PUT` | `/tickets/:id` | Update ticket |
+| `DELETE` | `/tickets/:id` | Delete ticket |
+| `POST` | `/tickets/:id/reply` | Reply to ticket |
+| `POST` | `/tickets/:id/note` | Add internal note |
+| `PUT` | `/tickets/:id/assign` | Reassign ticket |
+| `PUT` | `/tickets/:id/close` | Close ticket |
+
+### Create ticket example
+
+```bash
+curl -X POST https://your-company.autoservice.pe/api/v1/tickets \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "Cannot access the ERP system",
+    "description": "Error 503 since 9:00 AM. Affects the entire accounting department.",
+    "requester_email": "maria@company.com",
+    "priority": "high",
+    "category_id": 3
+  }'
+```
+
+### Filter parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `status` | string | new, open, in_progress, pending, resolved, closed |
+| `priority` | string | low, medium, high, critical |
+| `category_id` | integer | Category ID |
+| `assigned_agent_id` | integer | Assigned agent ID |
+| `search` | string | Search in subject and description |
+| `page` | integer | Page (default: 1) |
+| `per_page` | integer | Results per page (default: 20, max: 100) |
+
+### Other endpoints
+
+- **Users:** `GET/POST/PUT /users`
+- **Categories:** `GET/POST/PUT /categories`
+- **Knowledge Base:** `GET/POST/PUT /kb/articles`, `GET /kb/search?q=text`
+- **Teams:** `GET/POST /teams`
+
+## Rate Limiting
+
+| Plan | Limit |
+|------|-------|
+| Basic | 60 req/min |
+| Professional | 300 req/min |
+| Enterprise | 1000 req/min |
+
+## Webhooks
+
+Receive real-time notifications:
+
+Events: `ticket.created`, `ticket.updated`, `ticket.resolved`, `ticket.assigned`, `sla.warning`, `sla.breached`
+
+```json
+{
+  "event": "ticket.created",
+  "timestamp": "2025-03-21T14:30:00-05:00",
+  "data": {
+    "id": 1042,
+    "subject": "Cannot access the ERP",
+    "priority": "high",
+    "status": "new"
+  }
+}
+```
+
+---
+
+**Next:** [Integrations →](/docs/integrations)

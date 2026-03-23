@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\SatisfactionSurvey;
 use App\Models\Ticket;
 use App\Models\SlaBreach;
 use Illuminate\Http\JsonResponse;
@@ -45,6 +46,14 @@ class DashboardController extends Controller
             ? round((($totalTickets30d - $breaches30d) / $totalTickets30d) * 100, 1)
             : 100;
 
+        // CSAT average
+        $csatAverage = SatisfactionSurvey::responded()->avg('rating');
+        $csatTotal = SatisfactionSurvey::count();
+        $csatResponded = SatisfactionSurvey::responded()->count();
+        $csatResponseRate = $csatTotal > 0
+            ? round(($csatResponded / $csatTotal) * 100, 1)
+            : 0;
+
         return response()->json([
             'data' => [
                 'total_tickets' => $total,
@@ -57,6 +66,9 @@ class DashboardController extends Controller
                 'unassigned_tickets' => $unassigned,
                 'avg_response_time' => round($avgResponseMinutes ?? 0),
                 'sla_compliance' => $slaCompliance,
+                'csat_average' => $csatAverage ? round($csatAverage, 2) : null,
+                'csat_response_rate' => $csatResponseRate,
+                'csat_total_surveys' => $csatTotal,
             ],
         ]);
     }

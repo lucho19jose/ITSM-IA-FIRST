@@ -11,9 +11,12 @@ import { getTimeEntries, addTimeEntry, deleteTimeEntry } from '@/api/timeEntries
 import { getTicketAssociations, createTicketAssociation, deleteTicketAssociation } from '@/api/ticketAssociations'
 import { getRecentActivities } from '@/api/activities'
 import { getScenarios, executeScenario } from '@/api/scenarios'
+import { searchCannedResponses, useCannedResponse, type CannedResponseSearchResult } from '@/api/cannedResponses'
 import { getAgentGroups } from '@/api/agentGroups'
+import { getAssets } from '@/api/assets'
+import { getProblems, linkTickets as linkTicketsToProblems, unlinkTicket as unlinkTicketFromProblem } from '@/api/problems'
 import { getEcho } from '@/utils/echo'
-import type { Ticket, User, Category, TimeEntry, TicketAssociation, ActivityLog, Scenario, AgentGroup } from '@/types'
+import type { Asset, Ticket, User, Category, TimeEntry, TicketAssociation, ActivityLog, Scenario, AgentGroup, Problem } from '@/types'
 
 const props = defineProps<{ id: string }>()
 const { t } = useI18n()
@@ -37,6 +40,38 @@ const improvingText = ref(false)
 const replyAttachments = ref<File[]>([])
 const uploadingAttachments = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// Canned responses
+const cannedSearch = ref('')
+const cannedResults = ref<CannedResponseSearchResult[]>([])
+const cannedLoading = ref(false)
+const showCannedMenu = ref(false)
+
+async function onCannedSearch() {
+  cannedLoading.value = true
+  try {
+    const res = await searchCannedResponses(cannedSearch.value)
+    cannedResults.value = res.data
+  } catch {
+    /* ignore */
+  } finally {
+    cannedLoading.value = false
+  }
+}
+
+function onOpenCannedMenu() {
+  showCannedMenu.value = true
+  cannedSearch.value = ''
+  onCannedSearch()
+}
+
+function insertCannedResponse(item: CannedResponseSearchResult) {
+  newComment.value = item.content
+  showReplyEditor.value = true
+  showCannedMenu.value = false
+  // Track usage
+  useCannedResponse(item.id).catch(() => {})
+}
 
 function triggerFileInput() {
   fileInputRef.value?.click()
@@ -187,6 +222,63 @@ async function onSaveResolution() {
     ticket.value = { ...ticket.value, ...res.data }
     Notify.create({ type: 'positive', message: 'Resolución guardada' })
   } finally { savingResolution.value = false }
+}
+
+// ─── Problems Integration ────────────────────────────────────────────────────
+const ticketProblems = ref<Problem[]>([])
+const showProblemLinkDialog = ref(false)
+const problemSearch = ref('')
+const problemSearchResults = ref<Problem[]>([])
+const problemSearching = ref(false)
+
+async function loadTicketProblems() {
+  if (!ticket.value) return
+  try {
+    // Fetch problems that have this ticket linked
+    const res = await getProblems({ per_page: 100 })
+    ticketProblems.value = (res.data || []).filter((p: Problem) =>
+      p.tickets?.some((t: any) => t.id === ticket.value?.id)
+    )
+  } catch { /* ignore */ }
+}
+
+async function onSearchProblems() {
+  if (!problemSearch.value.trim()) return
+  problemSearching.value = true
+  try {
+    const res = await getProblems({ search: problemSearch.value, per_page: 10 })
+    ticketProblems.value
+    problemSearchResults.value = (res.data || []).filter(
+      (p: Problem) => !ticketProblems.value.some(tp => tp.id === p.id)
+    )
+  } catch { /* ignore */ }
+  finally { problemSearching.value = false }
+}
+
+async function onLinkToProblem(problemId: number) {
+  if (!ticket.value) return
+  try {
+    await linkTicketsToProblems(problemId, [ticket.value.id])
+    showProblemLinkDialog.value = false
+    problemSearch.value = ''
+    problemSearchResults.value = []
+    Notify.create({ type: 'positive', message: t('problems.updated') })
+    loadTicketProblems()
+  } catch { /* ignore */ }
+}
+
+async function onUnlinkProblem(problemId: number) {
+  if (!ticket.value) return
+  try {
+    await unlinkTicketFromProblem(problemId, ticket.value.id)
+    Notify.create({ type: 'positive', message: t('problems.updated') })
+    loadTicketProblems()
+  } catch { /* ignore */ }
+}
+
+function onCreateProblemFromTicket() {
+  if (!ticket.value) return
+  router.push({ name: 'problem-create', query: { ticket_id: String(ticket.value.id), ticket_title: ticket.value.title } })
 }
 
 // ─── Print ──────────────────────────────────────────────────────────────────
@@ -421,6 +513,7 @@ const editProps = reactive({
   category_id: null as number | null,
   assigned_to: null as number | null,
   agent_group_id: null as number | null,
+  asset_id: null as number | null,
 })
 
 const canManage = computed(() => auth.isAdmin || auth.isAgent)
@@ -504,9 +597,21 @@ const propertiesDirty = computed(() => {
     editProps.impact !== (ticket.value.impact || null) ||
     editProps.category_id !== ticket.value.category_id ||
     editProps.assigned_to !== ticket.value.assigned_to ||
-    editProps.agent_group_id !== (ticket.value.agent_group_id || null)
+    editProps.agent_group_id !== (ticket.value.agent_group_id || null) ||
+    editProps.asset_id !== (ticket.value.asset_id || null)
   )
 })
+
+// Asset search for ticket detail sidebar
+const assetSearchOptions = ref<Asset[]>([])
+
+async function searchAssetsForTicket(val: string, update: (fn: () => void) => void) {
+  if (val.length < 2) { update(() => { assetSearchOptions.value = [] }); return }
+  try {
+    const res = await getAssets({ search: val, per_page: 10 })
+    update(() => { assetSearchOptions.value = res.data })
+  } catch { update(() => { assetSearchOptions.value = [] }) }
+}
 
 function syncEditProps() {
   if (!ticket.value) return
@@ -519,6 +624,7 @@ function syncEditProps() {
   editProps.category_id = ticket.value.category_id
   editProps.assigned_to = ticket.value.assigned_to
   editProps.agent_group_id = ticket.value.agent_group_id || null
+  editProps.asset_id = ticket.value.asset_id || null
 }
 
 onMounted(async () => {
@@ -551,6 +657,7 @@ onMounted(async () => {
       loadTicketActivities()
       loadScenarios()
       loadAgentGroups()
+      loadTicketProblems()
     }
 
     // ─── Real-time: listen for updates and new comments ────────────
@@ -622,6 +729,7 @@ async function onSaveProperties() {
     }
 
     if (editProps.agent_group_id !== (ticket.value!.agent_group_id || null)) payload.agent_group_id = editProps.agent_group_id
+    if (editProps.asset_id !== (ticket.value!.asset_id || null)) payload.asset_id = editProps.asset_id
 
     if (Object.keys(payload).length > 0) {
       const res = await updateTicket(Number(props.id), payload as any)
@@ -1164,6 +1272,10 @@ function mdToHtml(text: string): string {
               <q-badge v-if="participants.length" color="grey-6" class="q-ml-xs">{{ participants.length }}</q-badge>
             </q-tab>
             <q-tab name="resolution" label="Resolución" />
+            <q-tab name="problems">
+              <span>Problemas</span>
+              <q-badge v-if="ticketProblems.length" color="deep-purple" class="q-ml-xs">{{ ticketProblems.length }}</q-badge>
+            </q-tab>
           </q-tabs>
 
           <q-separator />
@@ -1421,6 +1533,60 @@ function mdToHtml(text: string): string {
                   />
                   <q-btn flat no-caps dense color="grey-7" icon="attach_file" label="Adjuntar" @click="triggerFileInput" />
                   <q-btn
+                    v-if="canManage"
+                    flat no-caps dense size="sm"
+                    color="teal"
+                    icon="quickreply"
+                    :label="t('cannedResponses.quickResponses')"
+                    @click="onOpenCannedMenu"
+                    class="q-ml-sm"
+                  >
+                    <q-tooltip>{{ t('cannedResponses.insertResponse') }}</q-tooltip>
+                    <q-menu v-model="showCannedMenu" anchor="top left" self="bottom left" style="width: 380px; max-height: 400px;">
+                      <div class="q-pa-sm">
+                        <q-input
+                          v-model="cannedSearch"
+                          dense outlined
+                          :placeholder="t('cannedResponses.searchPlaceholder')"
+                          @update:model-value="onCannedSearch"
+                          autofocus
+                        >
+                          <template v-slot:prepend>
+                            <q-icon name="search" size="18px" />
+                          </template>
+                        </q-input>
+                      </div>
+                      <q-linear-progress v-if="cannedLoading" indeterminate color="primary" />
+                      <q-list separator style="max-height: 320px; overflow-y: auto;">
+                        <q-item
+                          v-for="item in cannedResults"
+                          :key="item.id"
+                          clickable
+                          v-close-popup
+                          @click="insertCannedResponse(item)"
+                        >
+                          <q-item-section>
+                            <q-item-label>
+                              {{ item.title }}
+                              <q-badge v-if="item.shortcut" class="q-ml-xs" color="grey-4" text-color="grey-8" dense>
+                                {{ item.shortcut }}
+                              </q-badge>
+                            </q-item-label>
+                            <q-item-label caption lines="2">{{ item.content_preview }}</q-item-label>
+                          </q-item-section>
+                          <q-item-section v-if="item.category" side>
+                            <q-chip size="xs" color="blue-2" text-color="blue-9" dense>{{ item.category }}</q-chip>
+                          </q-item-section>
+                        </q-item>
+                        <q-item v-if="!cannedLoading && cannedResults.length === 0">
+                          <q-item-section class="text-grey-5 text-center">
+                            {{ t('cannedResponses.noResults') }}
+                          </q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
+                  <q-btn
                     flat no-caps dense size="sm"
                     color="purple"
                     icon="auto_fix_high"
@@ -1613,6 +1779,68 @@ function mdToHtml(text: string): string {
                 :disable="resolutionNotes === (ticket.resolution_notes || '')"
                 @click="onSaveResolution"
               />
+
+              <!-- Satisfaction Survey Status -->
+              <div v-if="ticket.status === 'closed'" class="q-mt-xl">
+                <q-separator class="q-mb-md" />
+                <div class="text-subtitle2 text-weight-bold q-mb-sm">Encuesta de satisfaccion</div>
+                <div v-if="ticket.satisfaction_rating" class="q-pa-md" style="background: #f8f9fa; border-radius: 10px;">
+                  <div class="row items-center q-gutter-sm">
+                    <div>
+                      <span v-for="i in 5" :key="i" style="font-size: 20px;" :style="{ color: i <= ticket.satisfaction_rating ? '#ffc107' : '#ddd' }">&#9733;</span>
+                    </div>
+                    <div class="text-weight-medium">
+                      {{ ticket.satisfaction_rating }}/5
+                    </div>
+                  </div>
+                  <div v-if="(ticket as any).satisfaction_comment" class="text-body2 text-grey-7 q-mt-sm">
+                    "{{ (ticket as any).satisfaction_comment }}"
+                  </div>
+                </div>
+                <div v-else class="q-pa-md text-grey-6" style="background: #f8f9fa; border-radius: 10px;">
+                  <q-icon name="hourglass_empty" size="18px" class="q-mr-xs" />
+                  Pendiente - Encuesta enviada al solicitante
+                </div>
+              </div>
+            </q-tab-panel>
+
+            <!-- Problems Tab -->
+            <q-tab-panel name="problems" class="q-pa-lg">
+              <div class="row items-center q-mb-md">
+                <div class="col text-subtitle1 text-weight-medium">
+                  {{ t('problems.tabs.relatedIncidents') }} ({{ ticketProblems.length }})
+                </div>
+                <div class="q-gutter-sm">
+                  <q-btn outline color="primary" icon="link" :label="t('problems.linkToProblem')" @click="showProblemLinkDialog = true" size="sm" />
+                  <q-btn outline color="deep-purple" icon="add" :label="t('problems.createFromTicket')" @click="onCreateProblemFromTicket" size="sm" />
+                </div>
+              </div>
+
+              <q-list v-if="ticketProblems.length" bordered separator class="rounded-borders">
+                <q-item v-for="prob in ticketProblems" :key="prob.id" clickable @click="$router.push({ name: 'problem-detail', params: { id: prob.id } })">
+                  <q-item-section avatar>
+                    <q-icon name="bug_report" color="deep-purple" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-weight-medium">{{ prob.title }}</q-item-label>
+                    <q-item-label caption>
+                      <q-chip dense size="sm" :color="prob.status === 'resolved' ? 'green' : prob.status === 'closed' ? 'grey' : 'orange'" text-color="white">
+                        {{ t(`problems.statuses.${prob.status}`) }}
+                      </q-chip>
+                      <q-chip dense size="sm" class="q-ml-xs">{{ t(`problems.priorities.${prob.priority}`) }}</q-chip>
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-btn flat dense round icon="link_off" color="negative" @click.stop="onUnlinkProblem(prob.id)">
+                      <q-tooltip>{{ t('problems.unlinkTicket') }}</q-tooltip>
+                    </q-btn>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <div v-else class="text-grey text-center q-pa-lg">
+                <q-icon name="bug_report" size="48px" class="q-mb-sm" />
+                <div>{{ t('problems.noLinkedTickets') }}</div>
+              </div>
             </q-tab-panel>
           </q-tab-panels>
         </div>
@@ -1846,6 +2074,37 @@ function mdToHtml(text: string): string {
                       :disable="!canManage"
                       class="prop-select"
                     />
+                  </div>
+                </div>
+
+                <!-- Asset (full width) -->
+                <div v-if="canManage" class="prop-row">
+                  <div class="prop-field full-width">
+                    <label class="prop-label">{{ t('assets.affectedAsset') }}</label>
+                    <q-select
+                      v-model="editProps.asset_id"
+                      use-input
+                      emit-value
+                      map-options
+                      :options="assetSearchOptions"
+                      :option-value="(item: any) => item.id"
+                      :option-label="(item: any) => `${item.asset_tag} - ${item.name}`"
+                      @filter="searchAssetsForTicket"
+                      dense outlined clearable
+                      class="prop-select"
+                      :placeholder="t('assets.selectAsset')"
+                    >
+                      <template v-slot:option="scope">
+                        <q-item v-bind="scope.itemProps">
+                          <q-item-section avatar>
+                            <q-icon :name="scope.opt.asset_type?.icon || 'devices'" size="18px" />
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label>{{ scope.opt.asset_tag }} - {{ scope.opt.name }}</q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
                   </div>
                 </div>
 
@@ -2360,6 +2619,45 @@ function mdToHtml(text: string): string {
             :disable="!shareForm.email"
             @click="onShareByEmail"
           />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Link to Problem Dialog -->
+    <q-dialog v-model="showProblemLinkDialog">
+      <q-card style="min-width: 500px;">
+        <q-card-section>
+          <div class="text-h6">{{ t('problems.linkToProblem') }}</div>
+        </q-card-section>
+        <q-card-section>
+          <q-input
+            v-model="problemSearch"
+            :placeholder="t('problems.searchTickets')"
+            dense outlined
+            @keyup.enter="onSearchProblems"
+          >
+            <template #append>
+              <q-btn flat dense icon="search" :loading="problemSearching" @click="onSearchProblems" />
+            </template>
+          </q-input>
+
+          <q-list v-if="problemSearchResults.length" bordered separator class="q-mt-sm rounded-borders">
+            <q-item v-for="prob in problemSearchResults" :key="prob.id" clickable @click="onLinkToProblem(prob.id)">
+              <q-item-section avatar>
+                <q-icon name="bug_report" color="deep-purple" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ prob.title }}</q-item-label>
+                <q-item-label caption>{{ prob.status }} | {{ prob.priority }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-icon name="add_circle" color="primary" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat :label="t('common.cancel')" v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>

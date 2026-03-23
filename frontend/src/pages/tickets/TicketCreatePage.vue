@@ -7,8 +7,9 @@ import { createTicket, uploadTicketAttachments, getTicketTags } from '@/api/tick
 import { getCategories } from '@/api/categories'
 import { getAgents } from '@/api/users'
 import { getTicketFormFields } from '@/api/ticket-form'
+import { getAssets } from '@/api/assets'
 import { useAuthStore } from '@/stores/auth'
-import type { Category, TicketFormField, User } from '@/types'
+import type { Asset, Category, TicketFormField, User } from '@/types'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -23,6 +24,16 @@ const agents = ref<User[]>([])
 const attachedFiles = ref<File[]>([])
 const existingTags = ref<string[]>([])
 const filteredTags = ref<string[]>([])
+const assetOptions = ref<Asset[]>([])
+const selectedAssetId = ref<number | null>(null)
+
+async function searchAssets(val: string, update: (fn: () => void) => void) {
+  if (val.length < 2) { update(() => { assetOptions.value = [] }); return }
+  try {
+    const res = await getAssets({ search: val, per_page: 10 })
+    update(() => { assetOptions.value = res.data })
+  } catch { update(() => { assetOptions.value = [] }) }
+}
 
 // Form data - keyed by field_key
 const form = ref<Record<string, any>>({})
@@ -199,6 +210,10 @@ async function onSubmit() {
 
     if (Object.keys(customFields).length > 0) {
       payload.custom_fields = customFields
+    }
+
+    if (selectedAssetId.value) {
+      payload.asset_id = selectedAssetId.value
     }
 
     const res = await createTicket(payload)
@@ -501,6 +516,41 @@ async function onSubmit() {
                 <q-icon name="tune" size="18px" class="q-mr-xs" />
                 Detalles
               </div>
+
+                <!-- Asset selector (admin/agent only) -->
+                <div v-if="auth.isAdmin || auth.isAgent" class="q-mb-md">
+                  <q-select
+                    v-model="selectedAssetId"
+                    :label="t('assets.affectedAsset')"
+                    outlined dense
+                    use-input
+                    emit-value
+                    map-options
+                    :options="assetOptions"
+                    :option-value="(item: any) => item.id"
+                    :option-label="(item: any) => `${item.asset_tag} - ${item.name}`"
+                    @filter="searchAssets"
+                    clearable
+                    :placeholder="t('assets.selectAsset')"
+                  >
+                    <template v-slot:no-option>
+                      <q-item>
+                        <q-item-section class="text-grey">{{ t('common.noResults') }}</q-item-section>
+                      </q-item>
+                    </template>
+                    <template v-slot:option="scope">
+                      <q-item v-bind="scope.itemProps">
+                        <q-item-section avatar>
+                          <q-icon :name="scope.opt.asset_type?.icon || 'devices'" />
+                        </q-item-section>
+                        <q-item-section>
+                          <q-item-label>{{ scope.opt.asset_tag }} - {{ scope.opt.name }}</q-item-label>
+                          <q-item-label caption>{{ scope.opt.asset_type?.name }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                </div>
 
                 <template v-for="field in visibleDetailFields" :key="field.id">
                   <!-- Priority (special: colored indicators) -->

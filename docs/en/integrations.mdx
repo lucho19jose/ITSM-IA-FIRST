@@ -1,0 +1,64 @@
+---
+title: "Integrations"
+description: "Connect AutoService with Slack, Microsoft Teams, Jira, email and more."
+order: 21
+section: "Integrations"
+locale: en
+---
+
+# Integrations
+
+AutoService integrates with the tools your team already uses.
+
+## Slack
+
+Receive notifications and manage tickets directly from Slack.
+
+- **Notifications** — New tickets, status changes, SLA warnings
+- **Create tickets** — Use `/autoservice` to create tickets from Slack
+- **Reply** — Respond to tickets directly in the Slack thread
+- **Mentions** — Agents get mentioned when assigned a ticket
+
+## Microsoft Teams
+
+- Teams bot for creating and querying tickets
+- Adaptive cards with ticket details
+- Notifications in configured channels
+- Direct replies from Teams
+
+## Email
+
+Convert incoming emails into tickets automatically.
+
+- **From:** → Requester
+- **Subject:** → Ticket title
+- **Body:** → Description
+- **Attachments:** → Ticket files
+- **CC:** → Watchers
+
+## Jira
+
+Sync tickets between AutoService and Jira for escalation to development.
+
+1. Agent identifies a bug in a support ticket
+2. Creates a Jira issue from AutoService
+3. Ticket and issue are linked bidirectionally
+4. When the Jira issue is resolved, the ticket updates automatically
+
+## Single Sign-On (SSO)
+
+### SAML 2.0
+Compatible with: Azure AD, Google Workspace, Okta, OneLogin
+
+### OAuth 2.0 / OIDC
+Configure with any OpenID Connect compatible provider.
+
+> **Availability:** SSO is available on Professional and Enterprise plans.
+
+## Webhooks
+
+Send events to any external service via HTTP with HMAC-SHA256 signature verification.
+
+---
+
+**Next:** [Administration →](/docs/administration)

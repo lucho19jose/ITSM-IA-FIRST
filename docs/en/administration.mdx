@@ -1,0 +1,82 @@
+---
+title: "Administration"
+description: "User, role, team, category and general configuration management for AutoService."
+order: 30
+section: "Advanced"
+locale: en
+---
+
+# Administration
+
+Complete guide to administering your AutoService instance.
+
+## Users and roles
+
+### Predefined roles
+
+| Role | Permissions |
+|------|-------------|
+| **Super Admin** | Full access, system configuration |
+| **Administrator** | Configuration, reports, user management |
+| **Supervisor** | Team management, reassignment, reports |
+| **Agent** | Ticket management, KB, notes |
+| **Junior Agent** | Assigned tickets only |
+
+### Custom roles
+
+Define granular permissions:
+- `tickets.view`, `tickets.create`, `tickets.assign`, `tickets.delete`
+- `kb.manage` — Knowledge base management
+- `reports.view` — View reports
+- `settings.manage` — System configuration
+- `users.manage` — User management
+
+## Teams
+
+Teams group agents by area of specialization:
+
+- **Name** — e.g., "Infrastructure", "Support L1", "Development"
+- **Members** — Agents assigned to the team
+- **Categories** — Which categories this team handles
+- **Lead** — Agent who receives escalations
+
+### Auto-assignment
+
+- **Round Robin** — Even distribution among agents
+- **Least loaded** — To the agent with fewest open tickets
+- **Manual** — Supervisor assigns manually
+- **AI** — AI suggests the most suitable agent
+
+## Categories
+
+Organize tickets by problem type with nested categories. Each category can have:
+- Specific SLA
+- Default assigned team
+- Custom fields
+- Custom creation form
+
+## Custom fields
+
+Add additional fields to tickets: Text, Select, Multi-select, Date, Checkbox, Number.
+
+## General settings
+
+### Branding
+Logo, colors, instance name, favicon
+
+### Notifications
+Email templates, default channels, summary frequency
+
+### Security
+Password policy, max session time, IP allowlist, 2FA
+
+### Data & Privacy
+Data retention, data export (Ley 29733 compliance), account deletion
+
+## Audit log
+
+Complete record of system actions: who did what, when and from where.
+
+---
+
+**Next:** [Self-Hosting →](/docs/self-hosting)

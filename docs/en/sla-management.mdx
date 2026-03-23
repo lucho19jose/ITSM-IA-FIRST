@@ -1,0 +1,80 @@
+---
+title: "SLA Management"
+description: "Configure and monitor service level agreements for response and resolution times."
+order: 12
+section: "Features"
+locale: en
+---
+
+# SLA Management
+
+Service Level Agreements (SLAs) define the maximum response and resolution times for each ticket based on priority.
+
+## Configure SLAs
+
+```
+Admin Panel → Settings → SLAs
+```
+
+### Default policy
+
+| Priority | First Response | Resolution |
+|----------|---------------|------------|
+| Critical | 15 minutes | 1 hour |
+| High | 1 hour | 4 hours |
+| Medium | 4 hours | 8 hours |
+| Low | 8 hours | 24 hours |
+
+### Custom policies
+
+Create specific SLA policies by:
+- **Category** — Different SLA for Infrastructure vs Software
+- **Team** — Different times per support team
+- **Customer/Organization** — Premium SLAs for VIP customers
+- **Plan** — Different times based on subscription plan
+
+## Business hours
+
+SLAs are calculated based on configured **business hours**:
+
+- **24/7** — Clock runs all the time
+- **Business hours** — Only working hours (e.g., Mon-Fri 8:00-18:00)
+- **Custom** — Define schedules by day, holidays and exceptions
+
+> **Timezone:** SLAs respect the configured timezone. For Peru: `America/Lima` (UTC-5).
+
+## SLA monitoring
+
+### Dashboard indicators
+- 🟢 **On time** — More than 50% time remaining
+- 🟡 **At risk** — Less than 25% time remaining
+- 🔴 **Breached** — Past SLA deadline
+
+### Automatic alerts
+
+| Event | Notify | Channel |
+|-------|--------|---------|
+| 50% time elapsed | Assigned agent | Email + In-app |
+| 75% time elapsed | Agent + Lead | Email + In-app + Slack |
+| SLA breached | Agent + Lead + Admin | All channels |
+
+## Escalation
+
+When an SLA is breached, AutoService can:
+1. **Reassign** — Move to a senior agent or supervisor
+2. **Notify** — Alert the chain of command
+3. **Change priority** — Automatically elevate priority
+4. **Execute webhook** — Trigger an external action
+
+## SLA Reports
+
+Available reports:
+- **Compliance by period** — Daily/weekly/monthly rate
+- **By team** — SLA performance per team
+- **By category** — Which categories have more breaches
+- **By agent** — Individual performance
+- **Trends** — Compliance evolution over time
+
+---
+
+**Next:** [Knowledge Base →](/docs/knowledge-base)

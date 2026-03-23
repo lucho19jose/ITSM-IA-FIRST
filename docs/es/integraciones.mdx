@@ -1,0 +1,139 @@
+---
+title: "Integraciones"
+description: "Conecta AutoService con Slack, Microsoft Teams, Jira, email y más."
+order: 21
+section: "Integraciones"
+locale: es
+---
+
+# Integraciones
+
+AutoService se integra con las herramientas que ya usa tu equipo para centralizar la comunicación y automatizar flujos de trabajo.
+
+## Slack
+
+Recibe notificaciones y gestiona tickets directamente desde Slack.
+
+### Configuración
+```
+Panel Admin → Integraciones → Slack → Conectar
+```
+
+### Funcionalidades
+- **Notificaciones** — Nuevos tickets, cambios de estado, SLA por vencer
+- **Crear tickets** — Usa `/autoservice` para crear tickets desde Slack
+- **Responder** — Responde a tickets directamente en el hilo de Slack
+- **Menciones** — Los agentes pueden ser mencionados cuando se les asigna un ticket
+
+### Ejemplo de comando
+```
+/autoservice nuevo "El proyector de la sala 3 no funciona" --prioridad alta
+```
+
+## Microsoft Teams
+
+Similar a Slack, integra AutoService con Microsoft Teams.
+
+### Configuración
+```
+Panel Admin → Integraciones → Microsoft Teams → Conectar
+```
+
+### Funcionalidades
+- Bot de Teams para crear y consultar tickets
+- Tarjetas adaptativas con detalles del ticket
+- Notificaciones en canales configurados
+- Respuestas directas desde Teams
+
+## Email
+
+Convierte emails entrantes en tickets automáticamente.
+
+### Configuración
+```
+Panel Admin → Integraciones → Email → Configurar
+```
+
+1. Configura la dirección de soporte: `soporte@tu-empresa.com`
+2. AutoService monitorea la bandeja vía IMAP o forwarding
+3. Cada email nuevo crea un ticket automáticamente
+4. Las respuestas del usuario se agregan como comentarios
+
+### Mapeo de campos
+- **De:** → Solicitante
+- **Asunto:** → Título del ticket
+- **Cuerpo:** → Descripción
+- **Adjuntos:** → Archivos del ticket
+- **CC:** → Observadores
+
+## Jira
+
+Sincroniza tickets entre AutoService y Jira para escalamiento a desarrollo.
+
+### Configuración
+```
+Panel Admin → Integraciones → Jira → Conectar
+```
+
+### Flujo típico
+1. Agente identifica un bug en un ticket de soporte
+2. Crea un issue de Jira desde AutoService
+3. El ticket y el issue se vinculan bidireccionalmenre
+4. Cuando el issue de Jira se resuelve, el ticket se actualiza automáticamente
+
+## Webhooks salientes
+
+Envía eventos a cualquier servicio externo vía HTTP:
+
+```json
+{
+  "url": "https://tu-servicio.com/webhook",
+  "events": ["ticket.created", "ticket.resolved"],
+  "secret": "tu-secreto-hmac"
+}
+```
+
+Cada webhook incluye una firma HMAC-SHA256 en el header `X-AutoService-Signature` para verificar autenticidad.
+
+## Single Sign-On (SSO)
+
+### SAML 2.0
+```
+Panel Admin → Configuración → SSO → SAML
+```
+
+Compatible con:
+- Azure Active Directory
+- Google Workspace
+- Okta
+- OneLogin
+
+### OAuth 2.0 / OIDC
+```
+Panel Admin → Configuración → SSO → OIDC
+```
+
+Configura con cualquier proveedor compatible con OpenID Connect.
+
+> **Disponibilidad:** SSO está disponible en los planes Profesional y Enterprise.
+
+## Azure Active Directory
+
+Sincroniza usuarios y grupos desde Azure AD:
+
+- **Importar usuarios** — Sincronización automática de directorio
+- **Grupos → Equipos** — Mapea grupos de AD a equipos de AutoService
+- **SSO** — Login con credenciales corporativas
+
+## Google Workspace
+
+- **SSO con Google** — Login con cuenta de Google
+- **Sincronización de contactos** — Importa usuarios desde el directorio
+
+## API REST
+
+La forma más flexible de integrar. Consulta la [documentación de la API](/docs/api) para detalles completos.
+
+---
+
+**Siguiente:** [Administración →](/docs/administracion)

@@ -1,0 +1,57 @@
+---
+title: "Reports & Analytics"
+description: "Real-time dashboards and reports to measure your help desk performance."
+order: 14
+section: "Features"
+locale: en
+---
+
+# Reports & Analytics
+
+AutoService provides dashboards and reports to measure your support team's performance and make data-driven decisions.
+
+## Main dashboard
+
+Real-time metrics:
+- **Open tickets** — Total active tickets
+- **Resolved today** — Tickets closed today
+- **SLA compliance** — Percentage within SLA
+- **Avg. resolution time** — Last 7 days average
+
+### Charts
+- **Ticket trends** — Daily/weekly/monthly volume
+- **Priority distribution** — Proportion by priority
+- **Category distribution** — Bars by category
+- **Team performance** — Comparison between teams
+
+## Available reports
+
+### Team performance
+| Metric | Description |
+|--------|-------------|
+| Tickets resolved | Total by agent and team |
+| First response time | Average and P95 |
+| Resolution time | Average and P95 |
+| Reopen rate | % of tickets reopened |
+| Satisfaction | Average user rating |
+
+### Ticket analysis
+- By category, priority, channel, time/day, organization
+
+### Scheduled reports
+Configure automatic email delivery:
+- **Frequency** — Daily, weekly or monthly
+- **Recipients** — Email list
+- **Format** — PDF or CSV
+
+## Export data
+
+```bash
+curl https://your-company.autoservice.pe/api/v1/reports/resolved \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -G -d "from=2025-01-01" -d "to=2025-01-31" -d "format=csv"
+```
+
+---
+
+**Next:** [REST API →](/docs/rest-api)

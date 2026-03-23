@@ -1,0 +1,86 @@
+---
+title: "Reportes y Analítica"
+description: "Dashboards en tiempo real y reportes para medir el rendimiento de tu mesa de ayuda."
+order: 14
+section: "Funcionalidades"
+locale: es
+---
+
+# Reportes y Analítica
+
+AutoService ofrece dashboards y reportes para medir el rendimiento de tu equipo de soporte y tomar decisiones basadas en datos.
+
+## Dashboard principal
+
+El dashboard muestra métricas en tiempo real:
+
+### Tarjetas de resumen
+- **Tickets abiertos** — Total de tickets activos
+- **Resueltos hoy** — Tickets cerrados en el día
+- **Cumplimiento SLA** — Porcentaje de tickets dentro del SLA
+- **Tiempo promedio de resolución** — Media de los últimos 7 días
+
+### Gráficos
+- **Tendencia de tickets** — Volumen diario/semanal/mensual
+- **Distribución por prioridad** — Torta con proporción por prioridad
+- **Distribución por categoría** — Barras por categoría
+- **Rendimiento por equipo** — Comparativa entre equipos
+
+## Reportes disponibles
+
+### Rendimiento del equipo
+
+| Métrica | Descripción |
+|---------|-------------|
+| Tickets resueltos | Total por agente y equipo |
+| Tiempo de primera respuesta | Promedio y percentil 95 |
+| Tiempo de resolución | Promedio y percentil 95 |
+| Tasa de reapertura | % de tickets reabiertos |
+| Satisfacción | Calificación promedio del usuario |
+
+### Análisis de tickets
+
+- **Por categoría** — Volumen y tendencia por categoría
+- **Por prioridad** — Distribución y evolución
+- **Por canal** — Email vs portal vs API
+- **Por hora/día** — Patrones de demanda
+- **Por organización** — Si atiendes múltiples clientes
+
+### Reportes de SLA
+Desglose de cumplimiento por período, equipo, categoría y agente.
+
+### Reportes de satisfacción
+Resultados de encuestas CSAT enviadas al cerrar tickets.
+
+## Exportar datos
+
+Todos los reportes pueden exportarse en:
+
+- **CSV** — Para análisis en Excel o Google Sheets
+- **PDF** — Para compartir con gerencia
+- **API** — Consumir datos desde herramientas externas
+
+```bash
+# Ejemplo: Exportar tickets resueltos del mes vía API
+curl https://tu-empresa.autoservice.pe/api/v1/reports/resolved \
+  -H "Authorization: Bearer TU_TOKEN" \
+  -G -d "from=2025-01-01" -d "to=2025-01-31" \
+  -d "format=csv"
+```
+
+## Reportes programados
+
+Configura envío automático de reportes por email:
+
+```
+Panel Admin → Reportes → Programar
+```
+
+- **Frecuencia** — Diaria, semanal o mensual
+- **Destinatarios** — Lista de emails
+- **Formato** — PDF o CSV
+- **Contenido** — Selecciona las métricas a incluir
+
+---
+
+**Siguiente:** [REST API →](/docs/api)

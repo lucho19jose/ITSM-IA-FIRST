@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Ticket extends Model
@@ -41,7 +42,7 @@ class Ticket extends Model
         'approval_status', 'association_type', 'major_incident_type',
         'contact_number', 'requester_location', 'specific_subject',
         'customers_impacted', 'impacted_locations',
-        'agent_group_id', 'is_spam',
+        'agent_group_id', 'is_spam', 'asset_id',
     ];
 
     protected function casts(): array
@@ -121,8 +122,28 @@ class Ticket extends Model
         return $this->belongsTo(AgentGroup::class);
     }
 
+    public function satisfactionSurvey(): HasOne
+    {
+        return $this->hasOne(SatisfactionSurvey::class);
+    }
+
     public function favoritedBy(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'ticket_favorites')->withPivot('created_at');
+    }
+
+    public function problems(): BelongsToMany
+    {
+        return $this->belongsToMany(Problem::class, 'problem_ticket')->withPivot('created_at');
+    }
+
+    public function asset(): BelongsTo
+    {
+        return $this->belongsTo(Asset::class);
+    }
+
+    public function assets(): BelongsToMany
+    {
+        return $this->belongsToMany(Asset::class, 'asset_ticket');
     }
 }

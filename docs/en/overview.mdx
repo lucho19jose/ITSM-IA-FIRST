@@ -1,0 +1,100 @@
+---
+title: "Overview"
+description: "What is AutoService, its architecture and why choose it for IT service management."
+order: 0
+section: "Getting Started"
+locale: en
+---
+
+# Overview
+
+AutoService is an open-source **IT Service Management (ITSM)** platform powered by artificial intelligence. Designed for support teams that want to resolve tickets faster, meet SLAs and automate repetitive tasks.
+
+> **Open Source** — AutoService is available under the MIT license on [GitHub](https://github.com/lucho19jose/ITSM-IA-FIRST). Inspect the code, contribute improvements or deploy your own instance.
+
+## Why AutoService?
+
+| Feature | Traditional Tools | AutoService |
+|---|---|---|
+| Ticket classification | Manual | Automatic with AI |
+| Setup time | Days/weeks | Less than 5 minutes |
+| Response suggestions | No | AI based on Knowledge Base |
+| Source code | Closed | 100% open (MIT) |
+| Hosting | SaaS only | SaaS or Self-hosted |
+| Regional focus | Global | Latin America (PEN, RUC, SUNAT) |
+
+## Architecture
+
+AutoService follows a modern, scalable architecture:
+
+```
+┌─────────────────────────────────────────────────┐
+│                   Frontend                       │
+│   Support Portal (Vue 3) + Admin Panel           │
+├─────────────────────────────────────────────────┤
+│                   Backend API                    │
+│   Laravel 11 + REST API + WebSockets             │
+├─────────────────┬───────────────────────────────┤
+│   AI Engine     │   Database                    │
+│   Classification│   MySQL / PostgreSQL           │
+│   NLP + ML      │   Redis (cache + queues)       │
+├─────────────────┴───────────────────────────────┤
+│              Infrastructure                      │
+│   Docker + Nginx + Queue Workers                 │
+└─────────────────────────────────────────────────┘
+```
+
+### Tech Stack
+
+- **Backend:** Laravel 11 (PHP 8.2+)
+- **Frontend:** Vue 3 + Tailwind CSS
+- **Database:** MySQL 8 or PostgreSQL 15+
+- **Cache/Queues:** Redis
+- **AI:** NLP models for classification and suggestions
+- **Containers:** Docker + Docker Compose
+- **API:** REST with OpenAPI documentation
+
+## Core Components
+
+### Service Desk
+The heart of AutoService. Receives, classifies and manages support tickets with AI assistance.
+
+### Knowledge Base
+Help articles organized by categories, with intelligent search that AI uses to suggest responses.
+
+### AI Engine
+Analyzes each incoming ticket to:
+- Classify by category and subcategory
+- Assign priority (low, medium, high, critical)
+- Route to the correct team
+- Suggest responses based on similar tickets
+
+### Support Portal
+Web interface where end users can:
+- Create and track tickets
+- Browse the knowledge base
+- Check the status of their requests
+
+### Admin Panel
+Complete dashboard with:
+- Real-time metrics
+- SLA, team and category configuration
+- User and role management
+- Reports and analytics
+
+## System Requirements
+
+### SaaS (Hosted)
+Just a modern web browser (Chrome, Firefox, Edge, Safari).
+
+### Self-hosted
+- **Docker** 20.10+ and Docker Compose 2.0+
+- **PHP** 8.2+ (if installing without Docker)
+- **MySQL** 8.0+ or **PostgreSQL** 15+
+- **Redis** 6+
+- **Minimum RAM:** 2 GB
+- **Disk:** 10 GB+
+
+---
+
+**Next:** [Quick Start →](/docs/quick-start)

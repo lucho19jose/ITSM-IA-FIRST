@@ -64,7 +64,7 @@ async function submitRequest() {
             <div class="text-body2 text-grey">{{ item.description }}</div>
             <div class="q-mt-sm">
               <q-badge v-if="item.category" outline color="grey">{{ item.category }}</q-badge>
-              <q-badge v-if="item.approval_required" outline color="orange" class="q-ml-xs">{{ t('catalog.approvalRequired') }}</q-badge>
+              <q-badge v-if="item.approval_required || item.requires_approval" outline color="orange" class="q-ml-xs">{{ t('catalog.approvalRequired') }}</q-badge>
             </div>
             <div v-if="item.estimated_days" class="text-caption text-grey q-mt-xs">
               {{ item.estimated_days }} {{ t('catalog.estimatedDays') }}

@@ -1,0 +1,100 @@
+---
+title: "Visión General"
+description: "Qué es AutoService, su arquitectura y por qué elegirlo para gestionar servicios de TI."
+order: 0
+section: "Comenzar"
+locale: es
+---
+
+# Visión General
+
+AutoService es una plataforma de **Gestión de Servicios de TI (ITSM)** de código abierto, potenciada con inteligencia artificial. Diseñada para equipos de soporte que quieren resolver tickets más rápido, cumplir SLAs y automatizar tareas repetitivas.
+
+> **Open Source** — AutoService está disponible bajo licencia MIT en [GitHub](https://github.com/lucho19jose/ITSM-IA-FIRST). Puedes inspeccionar el código, contribuir o desplegar tu propia instancia.
+
+## ¿Por qué AutoService?
+
+| Característica | Herramientas tradicionales | AutoService |
+|---|---|---|
+| Clasificación de tickets | Manual | Automática con IA |
+| Tiempo de setup | Días/semanas | Menos de 5 minutos |
+| Sugerencias de respuesta | No | IA basada en Knowledge Base |
+| Código fuente | Cerrado | 100% abierto (MIT) |
+| Hosting | Solo SaaS | SaaS o Self-hosted |
+| Enfoque regional | Global | Latam (PEN, RUC, SUNAT) |
+
+## Arquitectura
+
+AutoService sigue una arquitectura moderna y escalable:
+
+```
+┌─────────────────────────────────────────────────┐
+│                   Frontend                       │
+│   Portal de Soporte (Vue 3) + Portal Admin       │
+├─────────────────────────────────────────────────┤
+│                   Backend API                    │
+│   Laravel 11 + REST API + WebSockets             │
+├─────────────────┬───────────────────────────────┤
+│   Motor de IA   │   Base de Datos               │
+│   Clasificación │   MySQL / PostgreSQL           │
+│   NLP + ML      │   Redis (cache + colas)        │
+├─────────────────┴───────────────────────────────┤
+│              Infraestructura                     │
+│   Docker + Nginx + Queue Workers                 │
+└─────────────────────────────────────────────────┘
+```
+
+### Stack tecnológico
+
+- **Backend:** Laravel 11 (PHP 8.2+)
+- **Frontend:** Vue 3 + Tailwind CSS
+- **Base de datos:** MySQL 8 o PostgreSQL 15+
+- **Cache/Colas:** Redis
+- **IA:** Modelos de NLP para clasificación y sugerencias
+- **Contenedores:** Docker + Docker Compose
+- **API:** REST con documentación OpenAPI
+
+## Componentes principales
+
+### Mesa de Ayuda (Service Desk)
+El corazón de AutoService. Recibe, clasifica y gestiona tickets de soporte con ayuda de IA.
+
+### Base de Conocimiento
+Artículos de ayuda organizados por categorías, con búsqueda inteligente que la IA usa para sugerir respuestas.
+
+### Motor de IA
+Analiza cada ticket entrante para:
+- Clasificar por categoría y subcategoría
+- Asignar prioridad (baja, media, alta, crítica)
+- Enrutar al equipo correcto
+- Sugerir respuestas basadas en tickets similares
+
+### Portal de Soporte
+Interfaz web donde los usuarios finales pueden:
+- Crear y dar seguimiento a tickets
+- Consultar la base de conocimiento
+- Ver el estado de sus solicitudes
+
+### Panel de Administración
+Dashboard completo con:
+- Métricas en tiempo real
+- Configuración de SLAs, equipos y categorías
+- Gestión de usuarios y roles
+- Reportes y analítica
+
+## Requisitos del sistema
+
+### SaaS (Hosted)
+Solo necesitas un navegador web moderno (Chrome, Firefox, Edge, Safari).
+
+### Self-hosted
+- **Docker** 20.10+ y Docker Compose 2.0+
+- **PHP** 8.2+ (si instalas sin Docker)
+- **MySQL** 8.0+ o **PostgreSQL** 15+
+- **Redis** 6+
+- **RAM mínima:** 2 GB
+- **Disco:** 10 GB+
+
+---
+
+**Siguiente:** [Inicio Rápido →](/docs/inicio-rapido)

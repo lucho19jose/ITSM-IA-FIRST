@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Ticket;
+use App\Services\PlanService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,10 @@ use Illuminate\Support\Str;
 
 class TenantManagementController extends Controller
 {
+    public function __construct(
+        protected PlanService $planService,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $query = Tenant::query();
@@ -67,9 +72,14 @@ class TenantManagementController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'ruc' => 'nullable|string|size:11',
-            'plan' => 'required|in:trial,basic,professional,enterprise',
+            'plan' => 'required|in:free,basico,profesional,enterprise',
             'is_active' => 'boolean',
             'trial_ends_at' => 'nullable|date',
+            'plan_expires_at' => 'nullable|date',
+            'max_agents' => 'nullable|integer',
+            'max_tickets_per_month' => 'nullable|integer',
+            'max_storage_mb' => 'nullable|integer',
+            'features' => 'nullable|array',
             'custom_domain' => 'nullable|string|max:255|unique:tenants,custom_domain',
             'admin_name' => 'required|string|max:255',
             'admin_email' => 'required|email|unique:users,email',
@@ -83,12 +93,20 @@ class TenantManagementController extends Controller
             $slug = $originalSlug . '-' . $counter++;
         }
 
+        // Get plan defaults from config
+        $planDefaults = config("plans.tiers.{$validated['plan']}", config('plans.tiers.free'));
+
         $tenant = Tenant::create([
             'name' => $validated['name'],
             'slug' => $slug,
             'custom_domain' => $validated['custom_domain'] ?? null,
             'ruc' => $validated['ruc'] ?? null,
             'plan' => $validated['plan'],
+            'plan_expires_at' => $validated['plan_expires_at'] ?? null,
+            'max_agents' => $validated['max_agents'] ?? $planDefaults['max_agents'],
+            'max_tickets_per_month' => $validated['max_tickets_per_month'] ?? $planDefaults['max_tickets_per_month'],
+            'max_storage_mb' => $validated['max_storage_mb'] ?? $planDefaults['max_storage_mb'],
+            'features' => $validated['features'] ?? null,
             'is_active' => $validated['is_active'] ?? true,
             'trial_ends_at' => $validated['trial_ends_at'] ?? null,
         ]);
@@ -109,9 +127,14 @@ class TenantManagementController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'ruc' => 'nullable|string|size:11',
-            'plan' => 'sometimes|in:trial,basic,professional,enterprise',
+            'plan' => 'sometimes|in:free,basico,profesional,enterprise',
             'is_active' => 'boolean',
             'trial_ends_at' => 'nullable|date',
+            'plan_expires_at' => 'nullable|date',
+            'max_agents' => 'nullable|integer',
+            'max_tickets_per_month' => 'nullable|integer',
+            'max_storage_mb' => 'nullable|integer',
+            'features' => 'nullable|array',
             'custom_domain' => 'nullable|string|max:255|unique:tenants,custom_domain,' . $tenant->id,
             'settings' => 'nullable|array',
         ]);
@@ -127,13 +150,27 @@ class TenantManagementController extends Controller
         return response()->json(['message' => 'Tenant eliminado']);
     }
 
-    public function toggleActive(Tenant $tenant): JsonResponse
+    public function toggleActive(Request $request, Tenant $tenant): JsonResponse
     {
-        $tenant->update(['is_active' => !$tenant->is_active]);
+        $newActiveState = !$tenant->is_active;
+
+        $updateData = ['is_active' => $newActiveState];
+
+        if ($newActiveState) {
+            // Reactivating — clear suspension fields
+            $updateData['suspended_at'] = null;
+            $updateData['suspension_reason'] = null;
+        } else {
+            // Deactivating — set suspension fields
+            $updateData['suspended_at'] = now();
+            $updateData['suspension_reason'] = $request->input('reason', 'admin_action');
+        }
+
+        $tenant->update($updateData);
 
         return response()->json([
-            'data' => $tenant,
-            'message' => $tenant->is_active ? 'Tenant activado' : 'Tenant desactivado',
+            'data' => $tenant->fresh(),
+            'message' => $newActiveState ? 'Tenant activado' : 'Tenant desactivado',
         ]);
     }
 
@@ -160,6 +197,68 @@ class TenantManagementController extends Controller
                     ->pluck('count', 'plan'),
                 'recent_tenants' => Tenant::latest()->limit(5)->get(['id', 'name', 'plan', 'is_active', 'created_at']),
             ],
+        ]);
+    }
+
+    /**
+     * Update a tenant's plan (super admin only).
+     */
+    public function updatePlan(Request $request, Tenant $tenant): JsonResponse
+    {
+        $validated = $request->validate([
+            'plan' => 'required|in:free,basico,profesional,enterprise',
+            'plan_expires_at' => 'nullable|date',
+            'max_agents' => 'nullable|integer',
+            'max_tickets_per_month' => 'nullable|integer',
+            'max_storage_mb' => 'nullable|integer',
+            'features' => 'nullable|array',
+            'plan_limits' => 'nullable|array',
+        ]);
+
+        // Apply plan defaults for any limits not explicitly overridden
+        $planDefaults = config("plans.tiers.{$validated['plan']}", config('plans.tiers.free'));
+
+        $tenant->update([
+            'plan' => $validated['plan'],
+            'plan_expires_at' => $validated['plan_expires_at'] ?? $tenant->plan_expires_at,
+            'max_agents' => $validated['max_agents'] ?? $planDefaults['max_agents'],
+            'max_tickets_per_month' => $validated['max_tickets_per_month'] ?? $planDefaults['max_tickets_per_month'],
+            'max_storage_mb' => $validated['max_storage_mb'] ?? $planDefaults['max_storage_mb'],
+            'features' => $validated['features'] ?? null,
+            'plan_limits' => $validated['plan_limits'] ?? null,
+        ]);
+
+        return response()->json([
+            'data' => $tenant->fresh(),
+            'usage' => $this->planService->getUsage($tenant->fresh()),
+            'message' => 'Plan actualizado exitosamente',
+        ]);
+    }
+
+    /**
+     * Get usage stats for a specific tenant (super admin only).
+     */
+    public function tenantUsage(Tenant $tenant): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->planService->getUsage($tenant),
+        ]);
+    }
+
+    /**
+     * Get plan usage for the current tenant (tenant admin).
+     */
+    public function planUsage(Request $request): JsonResponse
+    {
+        $tenant = $request->user()->tenant;
+
+        if (!$tenant) {
+            return response()->json(['message' => 'Tenant no encontrado'], 404);
+        }
+
+        return response()->json([
+            'data' => $this->planService->getUsage($tenant),
+            'available_plans' => config('plans.tiers'),
         ]);
     }
 

@@ -1,0 +1,146 @@
+---
+title: "Clasificación con IA"
+description: "Cómo funciona el motor de inteligencia artificial de AutoService para clasificar y priorizar tickets."
+order: 11
+section: "Funcionalidades"
+locale: es
+---
+
+# Clasificación con IA
+
+El motor de IA de AutoService analiza cada ticket entrante en tiempo real para clasificarlo, priorizarlo y enrutarlo automáticamente.
+
+## Cómo funciona
+
+Cuando un usuario crea un ticket, el flujo de IA es:
+
+```
+Ticket creado
+     │
+     ▼
+┌─────────────────┐
+│ Preprocesamiento│  Limpieza de texto, extracción de entidades
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Clasificación   │  Categoría + Subcategoría
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Priorización    │  Baja / Media / Alta / Crítica
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Enrutamiento    │  Equipo + Agente sugerido
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Sugerencias     │  Respuestas + artículos KB
+└─────────────────┘
+```
+
+## Clasificación por categoría
+
+El modelo analiza el texto del ticket y asigna la categoría más probable:
+
+| Categoría | Ejemplos de tickets |
+|-----------|-------------------|
+| **Infraestructura** | "El servidor está caído", "Error 503" |
+| **Software** | "Excel no abre", "Error en el ERP" |
+| **Hardware** | "Mi laptop no enciende", "Impresora atascada" |
+| **Accesos** | "No puedo entrar al sistema", "Necesito permisos" |
+| **Redes** | "Sin internet", "WiFi lento" |
+| **Seguridad** | "Email sospechoso", "Cuenta hackeada" |
+
+### Confianza del modelo
+
+Cada clasificación incluye un **puntaje de confianza** (0-100%):
+
+- **≥ 90%** — Clasificación automática, sin intervención humana
+- **70-89%** — Clasificación automática con flag de revisión
+- **< 70%** — Se envía a cola de triaje manual
+
+Puedes configurar estos umbrales desde:
+```
+Panel Admin → IA → Configuración → Umbrales de confianza
+```
+
+## Priorización inteligente
+
+La IA determina la prioridad basándose en:
+
+1. **Palabras clave de urgencia** — "urgente", "caído", "bloqueado", "producción"
+2. **Impacto estimado** — Número de usuarios afectados
+3. **Historial del solicitante** — Frecuencia y tipo de tickets previos
+4. **Hora y día** — Tickets fuera de horario pueden indicar mayor urgencia
+5. **SLA del solicitante** — Usuarios VIP o con contratos específicos
+
+### Niveles de prioridad
+
+| Prioridad | SLA Respuesta | SLA Resolución | Ejemplo |
+|-----------|---------------|----------------|---------|
+| **Crítica** | 15 min | 1 hora | Servidor de producción caído |
+| **Alta** | 1 hora | 4 horas | Sistema afecta a múltiples usuarios |
+| **Media** | 4 horas | 8 horas | Error en aplicación no crítica |
+| **Baja** | 8 horas | 24 horas | Solicitud de información |
+
+## Respuestas sugeridas
+
+Cuando un agente abre un ticket, la IA sugiere respuestas basadas en:
+
+- **Tickets similares resueltos** — Busca tickets con contexto similar y muestra las respuestas que funcionaron
+- **Artículos de Knowledge Base** — Extrae fragmentos relevantes de la base de conocimiento
+- **Plantillas de respuesta** — Sugiere macros configuradas que coinciden con el contexto
+
+> **Tip:** Las sugerencias mejoran con el tiempo. Cada vez que un agente acepta o rechaza una sugerencia, el modelo aprende.
+
+## Detección de anomalías
+
+El motor de IA monitorea patrones de tickets en tiempo real para detectar:
+
+- **Picos inusuales** — Incremento repentino de tickets en una categoría
+- **Tickets duplicados** — Múltiples reportes del mismo problema
+- **Incidentes masivos** — Varios usuarios afectados por el mismo issue
+
+Cuando se detecta una anomalía, AutoService:
+1. Alerta al equipo vía notificación
+2. Agrupa tickets relacionados
+3. Sugiere crear un **Problema** (Problem Management)
+
+## Entrenamiento del modelo
+
+La IA mejora continuamente con dos mecanismos:
+
+### Retroalimentación del agente
+Cuando un agente corrige una clasificación, el modelo aprende de esa corrección.
+
+### Re-entrenamiento periódico
+El modelo se re-entrena automáticamente cada semana con los datos acumulados.
+
+### Datos necesarios
+Para obtener buena precisión, recomendamos:
+- **100+ tickets** — Precisión básica (~80%)
+- **500+ tickets** — Buena precisión (~90%)
+- **1000+ tickets** — Precisión óptima (~95%+)
+
+## Configuración de IA
+
+```
+Panel Admin → IA → Configuración
+```
+
+| Opción | Descripción | Default |
+|--------|-------------|---------|
+| Clasificación automática | Activar/desactivar | Activada |
+| Umbral de confianza | Mínimo para auto-clasificar | 90% |
+| Sugerencias de respuesta | Mostrar a agentes | Activada |
+| Detección de anomalías | Alertas automáticas | Activada |
+| Idioma de análisis | Idioma principal | Español |
+
+---
+
+**Siguiente:** [Gestión de SLA →](/docs/sla)

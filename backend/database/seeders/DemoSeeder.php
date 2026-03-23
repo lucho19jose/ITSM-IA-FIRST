@@ -2,12 +2,17 @@
 
 namespace Database\Seeders;
 
+use App\Models\Asset;
+use App\Models\AssetType;
+use App\Models\BusinessHour;
 use App\Models\Category;
+use App\Models\Holiday;
 use App\Models\KnowledgeBaseArticle;
 use App\Models\KnowledgeBaseCategory;
 use App\Models\SlaPolicy;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\AssetService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -59,7 +64,69 @@ class DemoSeeder extends Seeder
             ['name' => 'SLA Media', 'priority' => 'medium', 'response_time' => 240, 'resolution_time' => 1440],
             ['name' => 'SLA Baja', 'priority' => 'low', 'response_time' => 480, 'resolution_time' => 2880],
         ];
+        // Business Hours (default: Mon-Fri 09:00-18:00, Lima TZ)
+        $businessHour = BusinessHour::create([
+            'name' => 'Horario Oficina',
+            'timezone' => 'America/Lima',
+            'is_default' => true,
+            'is_24x7' => false,
+        ]);
+
+        // Monday (1) through Friday (5), 09:00 - 18:00
+        for ($day = 1; $day <= 5; $day++) {
+            $businessHour->slots()->create([
+                'day_of_week' => $day,
+                'start_time' => '09:00',
+                'end_time' => '18:00',
+                'is_working_day' => true,
+            ]);
+        }
+        // Saturday and Sunday - non-working
+        foreach ([0, 6] as $day) {
+            $businessHour->slots()->create([
+                'day_of_week' => $day,
+                'start_time' => '00:00',
+                'end_time' => '00:00',
+                'is_working_day' => false,
+            ]);
+        }
+
+        // 24x7 schedule for urgent SLAs
+        $bh24x7 = BusinessHour::create([
+            'name' => 'Soporte 24/7',
+            'timezone' => 'America/Lima',
+            'is_default' => false,
+            'is_24x7' => true,
+        ]);
+
+        // Peruvian national holidays (recurring)
+        $peruvianHolidays = [
+            ['name' => 'Año Nuevo', 'date' => '2026-01-01', 'recurring' => true],
+            ['name' => 'Jueves Santo', 'date' => '2026-04-02', 'recurring' => false],
+            ['name' => 'Viernes Santo', 'date' => '2026-04-03', 'recurring' => false],
+            ['name' => 'Día del Trabajo', 'date' => '2026-05-01', 'recurring' => true],
+            ['name' => 'San Pedro y San Pablo', 'date' => '2026-06-29', 'recurring' => true],
+            ['name' => 'Día de la Independencia', 'date' => '2026-07-28', 'recurring' => true],
+            ['name' => 'Fiestas Patrias', 'date' => '2026-07-29', 'recurring' => true],
+            ['name' => 'Batalla de Junín', 'date' => '2026-08-06', 'recurring' => true],
+            ['name' => 'Santa Rosa de Lima', 'date' => '2026-08-30', 'recurring' => true],
+            ['name' => 'Combate de Angamos', 'date' => '2026-10-08', 'recurring' => true],
+            ['name' => 'Todos los Santos', 'date' => '2026-11-01', 'recurring' => true],
+            ['name' => 'Inmaculada Concepción', 'date' => '2026-12-08', 'recurring' => true],
+            ['name' => 'Batalla de Ayacucho', 'date' => '2026-12-09', 'recurring' => true],
+            ['name' => 'Navidad', 'date' => '2026-12-25', 'recurring' => true],
+        ];
+
+        foreach ($peruvianHolidays as $holiday) {
+            Holiday::create([
+                'business_hour_id' => null, // Tenant-wide holidays
+                ...$holiday,
+            ]);
+        }
+
+        // SLA Policies (link urgent to 24x7, others to office hours)
         foreach ($slaPolicies as $p) {
+            $p['business_hour_id'] = $p['priority'] === 'urgent' ? $bh24x7->id : $businessHour->id;
             SlaPolicy::create($p);
         }
 
@@ -145,6 +212,54 @@ class DemoSeeder extends Seeder
             'published_at' => now(),
         ]);
 
+        // Canned Responses
+        $agentUser = User::withoutGlobalScopes()->where('email', 'agente@demo.com')->first();
+
+        \App\Models\CannedResponse::create([
+            'user_id' => $adminUser->id,
+            'title' => 'Saludo inicial',
+            'content' => '<p>Hola, gracias por contactarnos. Mi nombre es {{agent_name}} y estaré atendiendo su solicitud. ¿En qué puedo ayudarle?</p>',
+            'category' => 'General',
+            'visibility' => 'global',
+            'shortcut' => '/saludo',
+        ]);
+
+        \App\Models\CannedResponse::create([
+            'user_id' => $adminUser->id,
+            'title' => 'Solicitud de más información',
+            'content' => '<p>Para poder ayudarle mejor, necesitamos la siguiente información adicional:</p><ul><li>Descripción detallada del problema</li><li>Capturas de pantalla (si aplica)</li><li>Equipo o aplicación afectada</li></ul><p>Quedamos atentos a su respuesta.</p>',
+            'category' => 'General',
+            'visibility' => 'global',
+            'shortcut' => '/masinfo',
+        ]);
+
+        \App\Models\CannedResponse::create([
+            'user_id' => $adminUser->id,
+            'title' => 'Ticket resuelto - Cierre',
+            'content' => '<p>Hemos resuelto su solicitud. Si el problema persiste o tiene alguna consulta adicional, no dude en reabrir este ticket o crear uno nuevo.</p><p>¡Gracias por su paciencia!</p>',
+            'category' => 'Cierre',
+            'visibility' => 'global',
+            'shortcut' => '/resuelto',
+        ]);
+
+        \App\Models\CannedResponse::create([
+            'user_id' => $agentUser->id,
+            'title' => 'Reiniciar contraseña',
+            'content' => '<p>Su contraseña ha sido restablecida exitosamente. Las nuevas credenciales han sido enviadas a su correo electrónico registrado.</p><p>Por favor, cambie su contraseña temporal en el primer inicio de sesión.</p>',
+            'category' => 'Accesos',
+            'visibility' => 'team',
+            'shortcut' => '/resetpwd',
+        ]);
+
+        \App\Models\CannedResponse::create([
+            'user_id' => $agentUser->id,
+            'title' => 'Escalamiento a nivel 2',
+            'content' => '<p>Este ticket ha sido escalado al equipo de soporte nivel 2 para su revisión. Un especialista se pondrá en contacto con usted en breve.</p><p>Tiempo estimado de respuesta: 4 horas hábiles.</p>',
+            'category' => 'Escalamiento',
+            'visibility' => 'team',
+            'shortcut' => '/escalar',
+        ]);
+
         KnowledgeBaseArticle::create([
             'category_id' => $kbCat->id,
             'title' => 'Cómo conectarse a la VPN corporativa',
@@ -155,6 +270,173 @@ class DemoSeeder extends Seeder
             'author_id' => $adminUser->id,
             'is_public' => true,
             'published_at' => now(),
+        ]);
+
+        // ─── Asset Types & Assets (CMDB) ─────────────────────────────────────
+        $assetService = new AssetService();
+
+        $laptopType = AssetType::create([
+            'name' => 'Laptop',
+            'icon' => 'laptop',
+            'fields' => [
+                ['name' => 'ram', 'label' => 'RAM', 'type' => 'text'],
+                ['name' => 'cpu', 'label' => 'CPU', 'type' => 'text'],
+                ['name' => 'storage', 'label' => 'Almacenamiento', 'type' => 'text'],
+                ['name' => 'os', 'label' => 'Sistema Operativo', 'type' => 'text'],
+            ],
+        ]);
+
+        $serverType = AssetType::create([
+            'name' => 'Servidor',
+            'icon' => 'dns',
+            'fields' => [
+                ['name' => 'ram', 'label' => 'RAM', 'type' => 'text'],
+                ['name' => 'cpu', 'label' => 'CPU', 'type' => 'text'],
+                ['name' => 'storage', 'label' => 'Almacenamiento', 'type' => 'text'],
+                ['name' => 'os', 'label' => 'Sistema Operativo', 'type' => 'text'],
+                ['name' => 'virtualization', 'label' => 'Virtualización', 'type' => 'text'],
+            ],
+        ]);
+
+        $softwareType = AssetType::create([
+            'name' => 'Software',
+            'icon' => 'apps',
+            'fields' => [
+                ['name' => 'version', 'label' => 'Versión', 'type' => 'text'],
+                ['name' => 'license_type', 'label' => 'Tipo de licencia', 'type' => 'select', 'options' => ['Perpetua', 'Suscripción', 'Open Source']],
+                ['name' => 'license_key', 'label' => 'Clave de licencia', 'type' => 'text'],
+                ['name' => 'seats', 'label' => 'Puestos', 'type' => 'number'],
+            ],
+        ]);
+
+        $printerType = AssetType::create([
+            'name' => 'Impresora',
+            'icon' => 'print',
+            'fields' => [
+                ['name' => 'printer_type', 'label' => 'Tipo', 'type' => 'select', 'options' => ['Láser', 'Inyección', 'Multifunción']],
+                ['name' => 'color', 'label' => 'Color', 'type' => 'checkbox'],
+            ],
+        ]);
+
+        $networkType = AssetType::create([
+            'name' => 'Red',
+            'icon' => 'router',
+            'fields' => [
+                ['name' => 'device_type', 'label' => 'Tipo de dispositivo', 'type' => 'select', 'options' => ['Router', 'Switch', 'Access Point', 'Firewall']],
+                ['name' => 'ports', 'label' => 'Puertos', 'type' => 'number'],
+                ['name' => 'firmware', 'label' => 'Firmware', 'type' => 'text'],
+            ],
+        ]);
+
+        $dept = \App\Models\Department::first();
+
+        Asset::create([
+            'asset_type_id' => $laptopType->id,
+            'name' => 'MacBook Pro - Admin Demo',
+            'asset_tag' => $assetService->generateAssetTag($tenant),
+            'serial_number' => 'C02XL0ZZJGH5',
+            'status' => 'active',
+            'condition' => 'good',
+            'assigned_to' => $adminUser->id,
+            'department_id' => $dept?->id,
+            'location' => 'Oficina Lima - Piso 3',
+            'purchase_date' => '2025-06-15',
+            'purchase_cost' => 7500.00,
+            'warranty_expiry' => '2027-06-15',
+            'vendor' => 'iShop Peru',
+            'manufacturer' => 'Apple',
+            'model' => 'MacBook Pro 14" M3',
+            'custom_fields' => ['ram' => '16GB', 'cpu' => 'Apple M3', 'storage' => '512GB SSD', 'os' => 'macOS Sonoma'],
+        ]);
+
+        Asset::create([
+            'asset_type_id' => $laptopType->id,
+            'name' => 'ThinkPad - Agente Soporte',
+            'asset_tag' => $assetService->generateAssetTag($tenant),
+            'serial_number' => 'PF2XYZAB',
+            'status' => 'active',
+            'condition' => 'good',
+            'assigned_to' => $agentUser->id,
+            'department_id' => $dept?->id,
+            'location' => 'Oficina Lima - Piso 2',
+            'purchase_date' => '2025-03-01',
+            'purchase_cost' => 4200.00,
+            'warranty_expiry' => '2028-03-01',
+            'vendor' => 'Lenovo Peru',
+            'manufacturer' => 'Lenovo',
+            'model' => 'ThinkPad T14s Gen 4',
+            'custom_fields' => ['ram' => '16GB', 'cpu' => 'Intel i7-1365U', 'storage' => '512GB SSD', 'os' => 'Windows 11 Pro'],
+        ]);
+
+        $server = Asset::create([
+            'asset_type_id' => $serverType->id,
+            'name' => 'Servidor Principal - Producción',
+            'asset_tag' => $assetService->generateAssetTag($tenant),
+            'serial_number' => 'SRV-2025-001',
+            'status' => 'active',
+            'condition' => 'good',
+            'location' => 'Data Center Lima',
+            'purchase_date' => '2024-01-15',
+            'purchase_cost' => 25000.00,
+            'warranty_expiry' => '2027-01-15',
+            'vendor' => 'Dell Technologies',
+            'manufacturer' => 'Dell',
+            'model' => 'PowerEdge R750',
+            'ip_address' => '192.168.1.10',
+            'custom_fields' => ['ram' => '64GB', 'cpu' => 'Intel Xeon Gold 5318Y', 'storage' => '2TB NVMe RAID', 'os' => 'Ubuntu 22.04 LTS', 'virtualization' => 'VMware ESXi 8.0'],
+        ]);
+
+        Asset::create([
+            'asset_type_id' => $softwareType->id,
+            'name' => 'Microsoft 365 Business Premium',
+            'asset_tag' => $assetService->generateAssetTag($tenant),
+            'status' => 'active',
+            'condition' => 'good',
+            'purchase_date' => '2025-01-01',
+            'purchase_cost' => 12000.00,
+            'warranty_expiry' => '2026-01-01',
+            'vendor' => 'Microsoft',
+            'manufacturer' => 'Microsoft',
+            'model' => 'M365 Business Premium',
+            'custom_fields' => ['version' => '2024', 'license_type' => 'Suscripción', 'license_key' => 'XXXXX-XXXXX-XXXXX', 'seats' => 50],
+        ]);
+
+        Asset::create([
+            'asset_type_id' => $printerType->id,
+            'name' => 'Impresora Piso 2',
+            'asset_tag' => $assetService->generateAssetTag($tenant),
+            'serial_number' => 'PRN-HP-001',
+            'status' => 'active',
+            'condition' => 'good',
+            'location' => 'Oficina Lima - Piso 2',
+            'purchase_date' => '2025-02-01',
+            'purchase_cost' => 2500.00,
+            'warranty_expiry' => '2027-02-01',
+            'vendor' => 'HP Peru',
+            'manufacturer' => 'HP',
+            'model' => 'LaserJet Pro MFP M428fdw',
+            'ip_address' => '192.168.1.50',
+            'mac_address' => 'AA:BB:CC:DD:EE:FF',
+            'custom_fields' => ['printer_type' => 'Multifunción', 'color' => true],
+        ]);
+
+        Asset::create([
+            'asset_type_id' => $networkType->id,
+            'name' => 'Switch Principal',
+            'asset_tag' => $assetService->generateAssetTag($tenant),
+            'serial_number' => 'SW-CISCO-001',
+            'status' => 'active',
+            'condition' => 'good',
+            'location' => 'Data Center Lima',
+            'purchase_date' => '2024-06-01',
+            'purchase_cost' => 8000.00,
+            'warranty_expiry' => '2029-06-01',
+            'vendor' => 'Cisco',
+            'manufacturer' => 'Cisco',
+            'model' => 'Catalyst 9300-48P',
+            'ip_address' => '192.168.1.1',
+            'mac_address' => '00:1A:2B:3C:4D:5E',
+            'custom_fields' => ['device_type' => 'Switch', 'ports' => 48, 'firmware' => 'IOS XE 17.9'],
         ]);
     }
 }

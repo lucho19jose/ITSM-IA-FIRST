@@ -1,0 +1,99 @@
+---
+title: "Ticket Management"
+description: "Learn to create, manage and resolve support tickets in AutoService."
+order: 10
+section: "Features"
+locale: en
+---
+
+# Ticket Management
+
+Tickets are the fundamental unit of work in AutoService. Every support request becomes a ticket that can be tracked, classified and resolved.
+
+## Creating a ticket
+
+### From the web portal
+End users access `your-company.autoservice.pe/portal` and fill in the form:
+
+- **Subject** — Brief description of the problem
+- **Description** — Full detail with context
+- **Category** (optional) — AI assigns it automatically if not selected
+- **Attachments** — Screenshots, logs, etc.
+
+### From email
+Configure a support email (e.g., `support@your-company.com`) that creates tickets automatically. The email subject becomes the title and the body becomes the description.
+
+### From the API
+```bash
+curl -X POST https://your-company.autoservice.pe/api/v1/tickets \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "Cannot access the ERP",
+    "description": "Getting error 503 since this morning",
+    "requester_email": "user@company.com"
+  }'
+```
+
+## Ticket lifecycle
+
+```
+New → Open → In Progress → Pending → Resolved → Closed
+                  ↑              │
+                  └──────────────┘
+                 (reopened by user)
+```
+
+| Status | Description |
+|--------|-------------|
+| **New** | Just created, pending assignment |
+| **Open** | Assigned to an agent |
+| **In Progress** | Agent is working on it |
+| **Pending** | Waiting for user response |
+| **Resolved** | Solution provided |
+| **Closed** | Confirmed resolved (automatic after 48h) |
+
+## AI Classification
+
+When a new ticket arrives, the AI engine analyzes the content and automatically:
+
+1. **Assigns category** — Networks, Software, Hardware, Access, etc.
+2. **Determines priority** — Low, Medium, High, Critical
+3. **Routes to team** — Based on category and availability
+4. **Suggests responses** — Searches similar resolved tickets and KB articles
+
+> **Accuracy:** The AI model achieves over 95% classification accuracy after the first 100 training samples.
+
+## Ticket actions
+
+- **Reply** — Add a response visible to the end user
+- **Internal note** — Add a note visible only to the support team
+- **Reassign** — Transfer to another agent or team
+- **Merge** — Combine duplicate tickets into one
+- **Split** — Create new tickets from an existing one with multiple issues
+
+## Filters and views
+
+AutoService includes powerful filters:
+
+- **My tickets** — Assigned to you
+- **Unassigned** — Pending assignment
+- **Overdue** — Past SLA deadline
+- **By priority** — Critical, High, Medium, Low
+- **By category** — Filter by specific category
+- **Custom** — Create and save your own filters
+
+## Automations
+
+Configure rules to automate actions:
+
+```
+IF priority = "Critical" AND category = "Infrastructure"
+THEN assign to team "Infra & Networks"
+     AND send Slack notification
+     AND set SLA = 1 hour
+```
+
+---
+
+**Next:** [AI Classification →](/docs/ai-classification)

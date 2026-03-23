@@ -1,0 +1,167 @@
+---
+title: "Administración"
+description: "Gestión de usuarios, roles, equipos, categorías y configuración general de AutoService."
+order: 30
+section: "Avanzado"
+locale: es
+---
+
+# Administración
+
+Guía completa para administrar tu instancia de AutoService.
+
+## Usuarios y roles
+
+### Roles predefinidos
+
+| Rol | Permisos |
+|-----|----------|
+| **Super Admin** | Acceso total, configuración del sistema |
+| **Administrador** | Configuración, reportes, gestión de usuarios |
+| **Supervisor** | Gestión de equipos, reasignación, reportes |
+| **Agente** | Gestión de tickets, KB, notas |
+| **Agente Junior** | Solo tickets asignados |
+
+### Crear usuario
+```
+Panel Admin → Usuarios → Nuevo Usuario
+```
+
+Campos requeridos:
+- Nombre completo
+- Email (único)
+- Rol
+- Equipo(s) asignado(s)
+
+### Roles personalizados
+
+```
+Panel Admin → Configuración → Roles → Nuevo Rol
+```
+
+Define permisos granulares:
+- `tickets.view` — Ver tickets
+- `tickets.create` — Crear tickets
+- `tickets.assign` — Asignar tickets
+- `tickets.delete` — Eliminar tickets
+- `kb.manage` — Gestionar base de conocimiento
+- `reports.view` — Ver reportes
+- `settings.manage` — Configuración del sistema
+- `users.manage` — Gestionar usuarios
+
+## Equipos
+
+Los equipos agrupan agentes por área de especialización:
+
+```
+Panel Admin → Equipos → Nuevo Equipo
+```
+
+- **Nombre** — Ej: "Infraestructura", "Soporte N1", "Desarrollo"
+- **Miembros** — Agentes asignados al equipo
+- **Categorías** — Qué categorías atiende este equipo
+- **Líder** — Agente que recibe escalamientos
+- **Horario** — Horario de atención del equipo
+
+### Asignación automática
+
+Configura cómo se distribuyen tickets al equipo:
+
+- **Round Robin** — Distribución equitativa entre agentes
+- **Menos carga** — Al agente con menos tickets abiertos
+- **Manual** — El supervisor asigna manualmente
+- **IA** — La IA sugiere el agente más adecuado
+
+## Categorías
+
+```
+Panel Admin → Configuración → Categorías
+```
+
+Las categorías organizan los tickets por tipo de problema:
+
+```
+📁 Infraestructura
+   📁 Servidores
+   📁 Redes
+   📁 Cloud
+📁 Software
+   📁 ERP
+   📁 Email
+   📁 Ofimática
+📁 Hardware
+   📁 Laptops
+   📁 Impresoras
+   📁 Periféricos
+📁 Accesos
+   📁 Sistemas
+   📁 VPN
+   📁 Active Directory
+```
+
+Cada categoría puede tener:
+- SLA específico
+- Equipo asignado por defecto
+- Campos personalizados
+- Formulario de creación personalizado
+
+## Campos personalizados
+
+```
+Panel Admin → Configuración → Campos Personalizados
+```
+
+Agrega campos adicionales a los tickets:
+
+| Tipo | Ejemplo |
+|------|---------|
+| Texto | "Número de activo" |
+| Selección | "Sistema afectado" (ERP, CRM, Email) |
+| Multi-selección | "Departamentos afectados" |
+| Fecha | "Fecha del incidente" |
+| Checkbox | "¿Afecta a producción?" |
+| Número | "Usuarios afectados" |
+
+## Configuración general
+
+```
+Panel Admin → Configuración → General
+```
+
+### Marca y apariencia
+- Logo de la empresa
+- Colores del portal (primario y acento)
+- Nombre de la instancia
+- Favicon
+
+### Notificaciones
+- Templates de email (personaliza el contenido de cada notificación)
+- Canales por defecto (email, in-app, Slack)
+- Frecuencia de resúmenes (diario, semanal)
+
+### Seguridad
+- Política de contraseñas (longitud mínima, complejidad)
+- Sesión máxima (tiempo de inactividad)
+- IP allowlist (restringir acceso por IP)
+- 2FA (autenticación de dos factores)
+
+### Datos y privacidad
+- Retención de datos (tiempo máximo de almacenamiento)
+- Exportación de datos (cumplimiento Ley 29733)
+- Eliminación de cuenta (derecho al olvido)
+
+## Auditoría
+
+```
+Panel Admin → Auditoría
+```
+
+Registro completo de acciones realizadas en el sistema:
+- Quién hizo qué, cuándo y desde dónde
+- Cambios en configuración
+- Accesos y login
+- Exportaciones de datos
+
+---
+
+**Siguiente:** [Self-Hosting →](/docs/self-hosting)

@@ -12,13 +12,23 @@ class Tenant extends Model
 
     protected $fillable = [
         'name', 'slug', 'custom_domain', 'logo_path', 'favicon_path',
-        'ruc', 'plan', 'settings', 'is_active', 'trial_ends_at',
+        'ruc', 'plan', 'plan_limits', 'plan_expires_at',
+        'max_agents', 'max_tickets_per_month', 'max_storage_mb',
+        'features', 'settings', 'is_active', 'trial_ends_at',
+        'suspended_at', 'suspension_reason',
     ];
 
     protected $casts = [
         'settings' => 'array',
+        'plan_limits' => 'array',
+        'features' => 'array',
         'is_active' => 'boolean',
         'trial_ends_at' => 'datetime',
+        'plan_expires_at' => 'datetime',
+        'suspended_at' => 'datetime',
+        'max_agents' => 'integer',
+        'max_tickets_per_month' => 'integer',
+        'max_storage_mb' => 'integer',
     ];
 
     protected $appends = ['logo_url', 'favicon_url'];

@@ -2,6 +2,14 @@
 
 namespace App\Providers;
 
+use App\Events\TicketCommentAdded;
+use App\Events\TicketCreated;
+use App\Events\TicketUpdated;
+use App\Listeners\SendTicketCommentEmail;
+use App\Listeners\SendTicketCreatedEmail;
+use App\Listeners\SendWebhookOnTicketEvent;
+use App\Listeners\ProcessAutomationRules;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
 
@@ -22,5 +30,19 @@ class AppServiceProvider extends ServiceProvider
     {
         Passport::tokensExpireIn(now()->addDays(15));
         Passport::refreshTokensExpireIn(now()->addDays(30));
+
+        // Register email notification listeners
+        Event::listen(TicketCreated::class, SendTicketCreatedEmail::class);
+        Event::listen(TicketCommentAdded::class, SendTicketCommentEmail::class);
+
+        // Register webhook notification listeners
+        Event::listen(TicketCreated::class, [SendWebhookOnTicketEvent::class, 'handleTicketCreated']);
+        Event::listen(TicketUpdated::class, [SendWebhookOnTicketEvent::class, 'handleTicketUpdated']);
+        Event::listen(TicketCommentAdded::class, [SendWebhookOnTicketEvent::class, 'handleTicketCommentAdded']);
+
+        // Register automation rules listeners
+        Event::listen(TicketCreated::class, [ProcessAutomationRules::class, 'handleTicketCreated']);
+        Event::listen(TicketUpdated::class, [ProcessAutomationRules::class, 'handleTicketUpdated']);
+        Event::listen(TicketCommentAdded::class, [ProcessAutomationRules::class, 'handleTicketCommentAdded']);
     }
 }

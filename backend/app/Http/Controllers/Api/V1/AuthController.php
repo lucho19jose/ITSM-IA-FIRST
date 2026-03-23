@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Mail\WelcomeMail;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
@@ -49,6 +51,9 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth-token')->accessToken;
 
+        // Queue welcome email
+        Mail::to($user->email)->queue(new WelcomeMail($user, $tenant));
+
         return response()->json([
             'user' => $user->load('tenant'),
             'token' => $token,
@@ -76,6 +81,19 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Tu cuenta está desactivada',
             ], 403);
+        }
+
+        // Check if the user's tenant is active
+        if ($user->tenant_id && $user->role !== 'super_admin') {
+            $tenant = Tenant::find($user->tenant_id);
+            if ($tenant && !$tenant->is_active) {
+                return response()->json([
+                    'message' => 'Cuenta suspendida. Tu empresa ha sido desactivada por falta de pago o a solicitud del administrador. Contacta soporte o reactiva tu suscripción.',
+                    'error_code' => 'tenant_suspended',
+                    'suspended_at' => $tenant->suspended_at?->toIso8601String(),
+                    'suspension_reason' => $tenant->suspension_reason,
+                ], 403);
+            }
         }
 
         $token = $user->createToken('auth-token')->accessToken;

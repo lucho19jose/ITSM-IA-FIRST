@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\PlanService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -12,6 +13,10 @@ use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
+    public function __construct(
+        protected PlanService $planService,
+    ) {}
+
     public function index(): JsonResponse
     {
         $users = User::orderBy('name')->get();
@@ -26,6 +31,18 @@ class UserController extends Controller
             'password' => ['required', Password::min(8)],
             'role' => 'required|in:admin,agent,end_user',
         ]);
+
+        // Check agent limit when creating admin or agent users
+        if (in_array($validated['role'], ['admin', 'agent'])) {
+            $tenant = $request->user()->tenant;
+            if ($tenant && !$this->planService->canAddAgent($tenant)) {
+                return response()->json([
+                    'message' => 'Has alcanzado el límite de agentes de tu plan. Actualiza tu plan para agregar más agentes.',
+                    'error' => 'agent_limit_reached',
+                    'upgrade_url' => '/settings/billing',
+                ], 403);
+            }
+        }
 
         $validated['password'] = Hash::make($validated['password']);
 

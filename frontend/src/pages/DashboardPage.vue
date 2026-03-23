@@ -42,6 +42,9 @@ const summary = ref<DashboardSummary>({
   unassigned_tickets: 0,
   avg_response_time: 0,
   sla_compliance: 100,
+  csat_average: null,
+  csat_response_rate: 0,
+  csat_total_surveys: 0,
 })
 const recentTickets = ref<Ticket[]>([])
 const statusChartData = ref<any>(null)
@@ -253,6 +256,14 @@ void auth
                   <q-icon name="trending_up" color="positive" size="28px" />
                   <div class="kpi-value">{{ summary.resolved_today }}</div>
                   <div class="kpi-label">{{ t('dashboard.resolvedToday') }}</div>
+                </div>
+                <div v-if="summary.csat_total_surveys > 0" class="kpi-item">
+                  <q-icon name="sentiment_satisfied" color="warning" size="28px" />
+                  <div class="kpi-value">
+                    {{ summary.csat_average ? summary.csat_average.toFixed(1) : '-' }}
+                    <span style="font-size: 14px; color: #ffc107;">&#9733;</span>
+                  </div>
+                  <div class="kpi-label">{{ t('dashboard.csatAverage') }} ({{ summary.csat_response_rate }}% {{ t('dashboard.responseRate') }})</div>
                 </div>
               </div>
             </q-card-section>

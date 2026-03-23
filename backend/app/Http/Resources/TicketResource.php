@@ -51,6 +51,8 @@ class TicketResource extends JsonResource
             'satisfaction_comment' => $this->satisfaction_comment,
             'resolution_notes' => $this->resolution_notes,
             'is_spam' => $this->is_spam,
+            'asset_id' => $this->asset_id,
+            'asset' => new AssetResource($this->whenLoaded('asset')),
             'category' => new CategoryResource($this->whenLoaded('category')),
             'requester' => new UserResource($this->whenLoaded('requester')),
             'assignee' => new UserResource($this->whenLoaded('assignee')),

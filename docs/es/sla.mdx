@@ -1,0 +1,131 @@
+---
+title: "Gestión de SLA"
+description: "Configura y monitorea acuerdos de nivel de servicio para garantizar tiempos de respuesta y resolución."
+order: 12
+section: "Funcionalidades"
+locale: es
+---
+
+# Gestión de SLA
+
+Los Acuerdos de Nivel de Servicio (SLA) definen los tiempos máximos de respuesta y resolución para cada ticket según su prioridad.
+
+## Configurar SLAs
+
+```
+Panel Admin → Configuración → SLAs
+```
+
+### Políticas por defecto
+
+AutoService incluye una política de SLA predeterminada:
+
+| Prioridad | Primera Respuesta | Resolución |
+|-----------|-------------------|------------|
+| Crítica | 15 minutos | 1 hora |
+| Alta | 1 hora | 4 horas |
+| Media | 4 horas | 8 horas |
+| Baja | 8 horas | 24 horas |
+
+### Crear política personalizada
+
+Puedes crear políticas SLA específicas por:
+
+- **Categoría** — SLA diferente para Infraestructura vs Software
+- **Equipo** — Tiempos distintos por equipo de soporte
+- **Cliente/Organización** — SLAs premium para clientes VIP
+- **Plan** — Diferentes tiempos según el plan contratado
+
+## Horario de servicio
+
+Los SLAs se calculan según el **horario de servicio** configurado:
+
+```
+Panel Admin → Configuración → Horario de Servicio
+```
+
+Opciones:
+- **24/7** — El reloj corre todo el tiempo
+- **Horario laboral** — Solo horas hábiles (ej: Lun-Vie 8:00-18:00)
+- **Personalizado** — Define horarios por día, feriados y excepciones
+
+> **Zona horaria:** Los SLAs respetan la zona horaria configurada. Para Perú: `America/Lima` (UTC-5).
+
+### Feriados
+
+```
+Panel Admin → Configuración → Feriados
+```
+
+Agrega los feriados de tu país. Los SLAs se pausan automáticamente durante estos días si usas horario laboral.
+
+## Monitoreo de SLA
+
+### Dashboard de SLA
+
+El panel principal muestra en tiempo real:
+
+- **Tickets en riesgo** — Próximos a vencer (< 25% del tiempo restante)
+- **Tickets vencidos** — Fuera del SLA
+- **Tasa de cumplimiento** — Porcentaje de tickets resueltos dentro del SLA
+- **Tendencia semanal** — Gráfico de cumplimiento por semana
+
+### Indicadores en el ticket
+
+Cada ticket muestra un indicador visual de SLA:
+
+- 🟢 **En tiempo** — Más del 50% del tiempo disponible
+- 🟡 **En riesgo** — Menos del 25% del tiempo
+- 🔴 **Vencido** — Fuera del SLA
+
+### Alertas automáticas
+
+Configura notificaciones cuando un SLA está por vencer:
+
+| Evento | Notificación a | Canal |
+|--------|---------------|-------|
+| 50% del tiempo | Agente asignado | Email + In-app |
+| 75% del tiempo | Agente + Líder | Email + In-app + Slack |
+| SLA vencido | Agente + Líder + Admin | Todos los canales |
+
+## Escalamiento
+
+Cuando un SLA se vence, AutoService puede:
+
+1. **Reasignar** — Mover el ticket a un agente senior o supervisor
+2. **Notificar** — Alertar a la cadena de mando
+3. **Cambiar prioridad** — Elevar la prioridad automáticamente
+4. **Ejecutar webhook** — Disparar una acción externa
+
+### Configurar escalamiento
+
+```
+Panel Admin → Configuración → Escalamiento
+```
+
+Ejemplo de regla:
+```
+SI SLA vencido por más de 30 minutos
+  Y prioridad = "Alta" o "Crítica"
+ENTONCES
+  Reasignar a supervisor del equipo
+  Notificar por Slack al canal #escalaciones
+  Cambiar prioridad a "Crítica"
+```
+
+## Reportes de SLA
+
+```
+Panel Admin → Reportes → SLA
+```
+
+Reportes disponibles:
+- **Cumplimiento por período** — Tasa de cumplimiento diaria/semanal/mensual
+- **Por equipo** — Rendimiento de SLA por equipo
+- **Por categoría** — Qué categorías tienen más incumplimientos
+- **Por agente** — Rendimiento individual
+- **Tendencias** — Evolución del cumplimiento en el tiempo
+
+---
+
+**Siguiente:** [Base de Conocimiento →](/docs/base-conocimiento)

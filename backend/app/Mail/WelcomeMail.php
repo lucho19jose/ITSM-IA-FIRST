@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Mail;
+
+use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\SerializesModels;
+
+class WelcomeMail extends Mailable implements ShouldQueue
+{
+    use Queueable, SerializesModels;
+
+    public string $tenantName;
+
+    public function __construct(
+        public User $user,
+        public Tenant $tenant,
+    ) {
+        $this->tenantName = $tenant->name;
+    }
+
+    public function envelope(): Envelope
+    {
+        return new Envelope(
+            subject: "Bienvenido a {$this->tenantName} - AutoService ITSM",
+        );
+    }
+
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.welcome',
+        );
+    }
+}

@@ -1,0 +1,222 @@
+---
+title: "REST API"
+description: "Documentación de la API REST de AutoService para integrar con tus sistemas existentes."
+order: 20
+section: "Integraciones"
+locale: es
+---
+
+# REST API
+
+AutoService expone una API REST completa para integrar con tus sistemas existentes. Todas las operaciones disponibles en la interfaz web también están disponibles vía API.
+
+## Autenticación
+
+La API usa tokens Bearer para autenticación:
+
+```bash
+curl https://tu-empresa.autoservice.pe/api/v1/tickets \
+  -H "Authorization: Bearer TU_API_TOKEN"
+```
+
+### Obtener un token
+
+```
+Panel Admin → Configuración → API → Generar Token
+```
+
+Tipos de token:
+- **Personal** — Acceso con los permisos del usuario
+- **Servicio** — Para integraciones sistema-a-sistema
+
+> **Seguridad:** Nunca expongas tokens en código frontend. Úsalos solo en backend o scripts seguros.
+
+## URL base
+
+```
+https://tu-empresa.autoservice.pe/api/v1
+```
+
+## Endpoints principales
+
+### Tickets
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/tickets` | Listar tickets |
+| `POST` | `/tickets` | Crear ticket |
+| `GET` | `/tickets/:id` | Obtener ticket |
+| `PUT` | `/tickets/:id` | Actualizar ticket |
+| `DELETE` | `/tickets/:id` | Eliminar ticket |
+| `POST` | `/tickets/:id/reply` | Responder ticket |
+| `POST` | `/tickets/:id/note` | Agregar nota interna |
+| `PUT` | `/tickets/:id/assign` | Reasignar ticket |
+| `PUT` | `/tickets/:id/close` | Cerrar ticket |
+
+### Ejemplo: Crear ticket
+
+```bash
+curl -X POST https://tu-empresa.autoservice.pe/api/v1/tickets \
+  -H "Authorization: Bearer TU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "No puedo acceder al sistema ERP",
+    "description": "Error 503 desde las 9:00 AM. Afecta a todo el departamento de contabilidad.",
+    "requester_email": "maria@empresa.com",
+    "priority": "high",
+    "category_id": 3,
+    "tags": ["erp", "acceso"]
+  }'
+```
+
+**Respuesta:**
+```json
+{
+  "data": {
+    "id": 1042,
+    "subject": "No puedo acceder al sistema ERP",
+    "status": "new",
+    "priority": "high",
+    "category": { "id": 3, "name": "Infraestructura" },
+    "ai_classification": {
+      "category_confidence": 0.96,
+      "priority_confidence": 0.91,
+      "suggested_team": "Infra & Redes"
+    },
+    "created_at": "2025-03-21T14:30:00-05:00"
+  }
+}
+```
+
+### Ejemplo: Listar tickets con filtros
+
+```bash
+# Tickets abiertos de prioridad alta
+curl "https://tu-empresa.autoservice.pe/api/v1/tickets?status=open&priority=high&page=1&per_page=20" \
+  -H "Authorization: Bearer TU_TOKEN"
+```
+
+**Parámetros de filtro:**
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| `status` | string | new, open, in_progress, pending, resolved, closed |
+| `priority` | string | low, medium, high, critical |
+| `category_id` | integer | ID de categoría |
+| `assigned_agent_id` | integer | ID del agente asignado |
+| `team_id` | integer | ID del equipo |
+| `requester_email` | string | Email del solicitante |
+| `created_after` | datetime | Fecha mínima de creación |
+| `created_before` | datetime | Fecha máxima de creación |
+| `search` | string | Búsqueda en asunto y descripción |
+| `page` | integer | Página (default: 1) |
+| `per_page` | integer | Resultados por página (default: 20, max: 100) |
+
+### Usuarios
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/users` | Listar usuarios |
+| `POST` | `/users` | Crear usuario |
+| `GET` | `/users/:id` | Obtener usuario |
+| `PUT` | `/users/:id` | Actualizar usuario |
+
+### Categorías
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/categories` | Listar categorías |
+| `POST` | `/categories` | Crear categoría |
+| `PUT` | `/categories/:id` | Actualizar categoría |
+
+### Base de Conocimiento
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/kb/articles` | Listar artículos |
+| `POST` | `/kb/articles` | Crear artículo |
+| `GET` | `/kb/articles/:id` | Obtener artículo |
+| `PUT` | `/kb/articles/:id` | Actualizar artículo |
+| `GET` | `/kb/search?q=texto` | Buscar artículos |
+
+### Equipos
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/teams` | Listar equipos |
+| `POST` | `/teams` | Crear equipo |
+| `GET` | `/teams/:id` | Obtener equipo |
+
+## Paginación
+
+La API usa paginación basada en cursor:
+
+```json
+{
+  "data": [...],
+  "meta": {
+    "current_page": 1,
+    "per_page": 20,
+    "total": 156,
+    "last_page": 8
+  }
+}
+```
+
+## Rate Limiting
+
+| Plan | Límite |
+|------|--------|
+| Básico | 60 req/min |
+| Profesional | 300 req/min |
+| Enterprise | 1000 req/min |
+
+Las cabeceras de respuesta incluyen:
+```
+X-RateLimit-Limit: 300
+X-RateLimit-Remaining: 289
+X-RateLimit-Reset: 1711042800
+```
+
+## Webhooks
+
+Recibe notificaciones en tiempo real cuando ocurren eventos:
+
+```
+Panel Admin → Configuración → Webhooks → Nuevo
+```
+
+Eventos disponibles:
+- `ticket.created` — Nuevo ticket
+- `ticket.updated` — Ticket actualizado
+- `ticket.resolved` — Ticket resuelto
+- `ticket.assigned` — Ticket asignado
+- `sla.warning` — SLA por vencer
+- `sla.breached` — SLA vencido
+
+**Payload de ejemplo:**
+```json
+{
+  "event": "ticket.created",
+  "timestamp": "2025-03-21T14:30:00-05:00",
+  "data": {
+    "id": 1042,
+    "subject": "No puedo acceder al ERP",
+    "priority": "high",
+    "status": "new"
+  }
+}
+```
+
+## SDKs y librerías
+
+Próximamente:
+- **JavaScript/TypeScript** — `npm install @autoservice/sdk`
+- **Python** — `pip install autoservice`
+- **PHP** — `composer require autoservice/sdk`
+
+Mientras tanto, cualquier cliente HTTP funciona con la API REST.
+
+---
+
+**Siguiente:** [Integraciones →](/docs/integraciones)

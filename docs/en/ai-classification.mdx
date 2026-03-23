@@ -1,0 +1,110 @@
+---
+title: "AI Classification"
+description: "How the AutoService AI engine works to classify and prioritize tickets."
+order: 11
+section: "Features"
+locale: en
+---
+
+# AI Classification
+
+The AutoService AI engine analyzes each incoming ticket in real-time to classify, prioritize and route it automatically.
+
+## How it works
+
+When a user creates a ticket, the AI flow is:
+
+```
+Ticket created
+     │
+     ▼
+┌─────────────────┐
+│ Preprocessing   │  Text cleaning, entity extraction
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Classification  │  Category + Subcategory
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Prioritization  │  Low / Medium / High / Critical
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Routing         │  Team + Suggested agent
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Suggestions     │  Responses + KB articles
+└─────────────────┘
+```
+
+## Category classification
+
+The model analyzes ticket text and assigns the most likely category:
+
+| Category | Example tickets |
+|----------|----------------|
+| **Infrastructure** | "Server is down", "Error 503" |
+| **Software** | "Excel won't open", "ERP error" |
+| **Hardware** | "Laptop won't turn on", "Printer jam" |
+| **Access** | "Can't log in", "Need permissions" |
+| **Networks** | "No internet", "Slow WiFi" |
+| **Security** | "Suspicious email", "Account hacked" |
+
+### Model confidence
+
+Each classification includes a **confidence score** (0-100%):
+
+- **≥ 90%** — Automatic classification, no human intervention
+- **70-89%** — Automatic with review flag
+- **< 70%** — Sent to manual triage queue
+
+Configure thresholds at:
+```
+Admin Panel → AI → Settings → Confidence Thresholds
+```
+
+## Intelligent prioritization
+
+AI determines priority based on:
+
+1. **Urgency keywords** — "urgent", "down", "blocked", "production"
+2. **Estimated impact** — Number of affected users
+3. **Requester history** — Frequency and type of previous tickets
+4. **Time and day** — Off-hours tickets may indicate higher urgency
+5. **Requester SLA** — VIP users or specific contracts
+
+## Suggested responses
+
+When an agent opens a ticket, AI suggests responses based on:
+
+- **Similar resolved tickets** — Shows responses that worked
+- **Knowledge Base articles** — Extracts relevant fragments
+- **Response templates** — Suggests matching macros
+
+> **Tip:** Suggestions improve over time. Each time an agent accepts or rejects a suggestion, the model learns.
+
+## Anomaly detection
+
+The AI engine monitors ticket patterns in real-time to detect:
+
+- **Unusual spikes** — Sudden increase in a category
+- **Duplicate tickets** — Multiple reports of the same issue
+- **Mass incidents** — Several users affected by the same problem
+
+## Training
+
+The AI improves continuously:
+
+- **Agent feedback** — When an agent corrects a classification, the model learns
+- **Periodic retraining** — Weekly automatic retraining with accumulated data
+- **100+ tickets** for basic accuracy (~80%), **1000+** for optimal (~95%+)
+
+---
+
+**Next:** [SLA Management →](/docs/sla-management)

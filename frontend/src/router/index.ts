@@ -48,13 +48,35 @@ const routes: RouteRecordRaw[] = [
       { path: 'kb', name: 'kb', component: () => import('@/pages/kb/KbListPage.vue') },
       { path: 'kb/articles/:id', name: 'kb-article', component: () => import('@/pages/kb/KbArticlePage.vue'), props: true },
       { path: 'kb/editor/:id?', name: 'kb-editor', component: () => import('@/pages/kb/KbEditorPage.vue'), props: true, meta: { roles: ['admin', 'agent'] } },
+      { path: 'problems', name: 'problems', component: () => import('@/pages/problems/ProblemListPage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'problems/create', name: 'problem-create', component: () => import('@/pages/problems/ProblemCreatePage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'problems/known-errors', name: 'known-errors', component: () => import('@/pages/problems/KnownErrorsPage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'problems/:id', name: 'problem-detail', component: () => import('@/pages/problems/ProblemDetailPage.vue'), props: true, meta: { roles: ['admin', 'agent'] } },
+      { path: 'changes', name: 'changes', component: () => import('@/pages/changes/ChangeListPage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'changes/create', name: 'change-create', component: () => import('@/pages/changes/ChangeCreatePage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'changes/calendar', name: 'change-calendar', component: () => import('@/pages/changes/ChangeCalendarPage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'changes/:id', name: 'change-detail', component: () => import('@/pages/changes/ChangeDetailPage.vue'), props: true, meta: { roles: ['admin', 'agent'] } },
+      { path: 'assets', name: 'assets', component: () => import('@/pages/assets/AssetListPage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'assets/create', name: 'asset-create', component: () => import('@/pages/assets/AssetCreatePage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'assets/:id', name: 'asset-detail', component: () => import('@/pages/assets/AssetDetailPage.vue'), props: true, meta: { roles: ['admin', 'agent'] } },
       { path: 'catalog', name: 'catalog', component: () => import('@/pages/catalog/CatalogPage.vue') },
+      { path: 'approvals', name: 'approvals', component: () => import('@/pages/ApprovalsPage.vue') },
       { path: 'settings', name: 'settings', component: () => import('@/pages/settings/SettingsPage.vue'), meta: { roles: ['admin'] } },
+      { path: 'settings/approval-workflows', name: 'approval-workflows', component: () => import('@/pages/settings/ApprovalWorkflowsPage.vue'), meta: { roles: ['admin'] } },
       { path: 'settings/users', name: 'users', component: () => import('@/pages/settings/UsersPage.vue'), meta: { roles: ['admin'] } },
       { path: 'settings/categories', name: 'categories', component: () => import('@/pages/settings/CategoriesPage.vue'), meta: { roles: ['admin'] } },
       { path: 'settings/sla', name: 'sla', component: () => import('@/pages/settings/SlaPage.vue'), meta: { roles: ['admin'] } },
       { path: 'settings/ticket-form', name: 'ticket-form-config', component: () => import('@/pages/settings/TicketFormConfigPage.vue'), meta: { roles: ['admin'] } },
-      { path: 'reports', name: 'reports', component: () => import('@/pages/ReportsPage.vue'), meta: { roles: ['admin'] } },
+      { path: 'settings/canned-responses', name: 'canned-responses', component: () => import('@/pages/settings/CannedResponsesPage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'settings/asset-types', name: 'asset-types', component: () => import('@/pages/settings/AssetTypesPage.vue'), meta: { roles: ['admin'] } },
+      { path: 'settings/integrations', name: 'integrations', component: () => import('@/pages/settings/IntegrationsPage.vue'), meta: { roles: ['admin'] } },
+      { path: 'settings/automation-rules', name: 'automation-rules', component: () => import('@/pages/settings/AutomationRulesPage.vue'), meta: { roles: ['admin'] } },
+      { path: 'settings/automation-rules/new', name: 'automation-rule-builder-new', component: () => import('@/pages/settings/AutomationRuleBuilderPage.vue'), meta: { roles: ['admin'] } },
+      { path: 'settings/automation-rules/:id/edit', name: 'automation-rule-builder', component: () => import('@/pages/settings/AutomationRuleBuilderPage.vue'), props: true, meta: { roles: ['admin'] } },
+      { path: 'reports', name: 'report-list', component: () => import('@/pages/reports/ReportListPage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'reports/new', name: 'report-builder', component: () => import('@/pages/reports/ReportBuilderPage.vue'), meta: { roles: ['admin', 'agent'] } },
+      { path: 'reports/:id', name: 'report-view', component: () => import('@/pages/reports/ReportViewPage.vue'), props: true, meta: { roles: ['admin', 'agent'] } },
+      { path: 'reports/:id/edit', name: 'report-edit', component: () => import('@/pages/reports/ReportBuilderPage.vue'), props: true, meta: { roles: ['admin', 'agent'] } },
       { path: 'search', name: 'search', component: () => import('@/pages/SearchResultsPage.vue') },
       {
         path: 'profile',
@@ -63,6 +85,13 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Perfil' },
       },
     ],
+  },
+  // Public survey page (no auth, no layout wrapper)
+  {
+    path: '/survey/:token',
+    name: 'survey',
+    component: () => import('@/pages/SurveyPage.vue'),
+    meta: { public: true },
   },
   {
     path: '/',
@@ -82,6 +111,11 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   NProgress.start()
   const auth = useAuthStore(pinia)
+
+  // ─── Public routes (survey, etc.) ──────────────────────────────────
+  if (to.meta.public) {
+    return
+  }
 
   // ─── Portal routes ──────────────────────────────────────────────────
   if (to.meta.isPortal || to.matched.some(r => r.meta.isPortal)) {

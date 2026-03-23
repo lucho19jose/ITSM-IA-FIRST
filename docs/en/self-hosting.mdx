@@ -1,0 +1,113 @@
+---
+title: "Self-Hosting"
+description: "Deploy your own AutoService instance on your infrastructure."
+order: 31
+section: "Advanced"
+locale: en
+---
+
+# Self-Hosting
+
+AutoService is open source and can be deployed on your own infrastructure.
+
+## With Docker (Recommended)
+
+### Prerequisites
+- Docker 20.10+, Docker Compose 2.0+
+- 2 GB RAM minimum, 10 GB disk
+
+### Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/lucho19jose/ITSM-IA-FIRST.git
+cd ITSM-IA-FIRST
+
+# 2. Copy configuration file
+cp .env.example .env
+
+# 3. Configure environment variables
+nano .env
+
+# 4. Start services
+docker compose up -d
+
+# 5. Run migrations
+docker compose exec app php artisan migrate --seed
+
+# 6. Generate application key
+docker compose exec app php artisan key:generate
+```
+
+### Included services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `app` | 8000 | Laravel application |
+| `mysql` | 3306 | Database |
+| `redis` | 6379 | Cache and queues |
+| `nginx` | 80/443 | Reverse proxy |
+| `worker` | — | Queue processor |
+| `scheduler` | — | Scheduled tasks |
+
+## Manual installation (without Docker)
+
+### Requirements
+- PHP 8.2+ with extensions: BCMath, Ctype, cURL, DOM, Fileinfo, JSON, Mbstring, OpenSSL, PDO, Redis, Tokenizer, XML
+- Composer 2.x, Node.js 18+
+- MySQL 8.0+ or PostgreSQL 15+, Redis 6+
+- Nginx or Apache
+
+### Steps
+
+```bash
+git clone https://github.com/lucho19jose/ITSM-IA-FIRST.git
+cd ITSM-IA-FIRST
+cp .env.example .env
+composer install --optimize-autoloader --no-dev
+npm install && npm run build
+php artisan key:generate
+php artisan migrate --seed
+chmod -R 775 storage bootstrap/cache
+```
+
+## Updates
+
+```bash
+# With Docker
+git pull origin main
+docker compose build app
+docker compose up -d
+docker compose exec app php artisan migrate
+
+# Without Docker
+git pull origin main
+composer install --optimize-autoloader --no-dev
+npm install && npm run build
+php artisan migrate
+php artisan queue:restart
+```
+
+## Backups
+
+```bash
+# Database
+docker compose exec mysql mysqldump -u autoservice -p autoservice > backup.sql
+
+# Files
+tar -czf storage-backup.tar.gz storage/app
+```
+
+## Contributing
+
+Visit the [GitHub repository](https://github.com/lucho19jose/ITSM-IA-FIRST):
+
+1. Fork the repository
+2. Create a branch: `git checkout -b feature/my-improvement`
+3. Commit: `git commit -m 'Add my improvement'`
+4. Push: `git push origin feature/my-improvement`
+5. Open a Pull Request
+
+---
+
+**Back to start:** [Overview →](/docs/overview)

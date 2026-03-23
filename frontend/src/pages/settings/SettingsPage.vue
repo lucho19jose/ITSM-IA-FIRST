@@ -549,6 +549,14 @@ function onResetColors() {
               </q-item-section>
               <q-item-section side><q-icon name="chevron_right" /></q-item-section>
             </q-item>
+            <q-item clickable v-ripple to="/settings/integrations">
+              <q-item-section avatar><q-icon name="hub" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Integraciones</q-item-label>
+                <q-item-label caption>Slack, Microsoft Teams y webhooks</q-item-label>
+              </q-item-section>
+              <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+            </q-item>
           </q-list>
         </q-card-section>
       </q-card>

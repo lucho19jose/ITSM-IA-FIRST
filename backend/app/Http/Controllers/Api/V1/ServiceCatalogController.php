@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ServiceCatalogItem;
 use App\Models\SlaPolicy;
 use App\Models\Ticket;
+use App\Services\ApprovalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -81,6 +82,21 @@ class ServiceCatalogController extends Controller
             'description' => 'nullable|string',
             'form_data' => 'nullable|array',
         ]);
+
+        // If the item requires approval and has a workflow, create an approval instead
+        if ($catalogItem->requires_approval && $catalogItem->approval_workflow_id) {
+            $workflow = $catalogItem->approvalWorkflow;
+            if ($workflow && $workflow->is_active) {
+                $approvalService = app(ApprovalService::class);
+                $approval = $approvalService->createApproval($catalogItem, $workflow, $request->user());
+
+                return response()->json([
+                    'data' => $approval->load(['workflow', 'requester']),
+                    'message' => 'Solicitud enviada para aprobación',
+                    'requires_approval' => true,
+                ], 201);
+            }
+        }
 
         $ticketData = [
             'title' => "Solicitud: {$catalogItem->name}",

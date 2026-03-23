@@ -18,10 +18,33 @@ class PortalController extends Controller
 {
     /**
      * Resolve tenant from slug (used by all portal routes).
+     * Returns the tenant even if inactive so callers can show
+     * an appropriate suspension message.
      */
     private function resolveTenant(string $slug): ?Tenant
     {
-        return Tenant::where('slug', $slug)->where('is_active', true)->first();
+        return Tenant::where('slug', $slug)->first();
+    }
+
+    /**
+     * Return a 403 response if the tenant is suspended,
+     * or 404 if it doesn't exist at all.
+     */
+    private function guardTenant(?Tenant $tenant): ?JsonResponse
+    {
+        if ($guard = $this->guardTenant($tenant)) {
+            return $guard;
+        }
+
+        if (!$tenant->is_active) {
+            return response()->json([
+                'message' => 'Cuenta suspendida. Esta empresa ha sido desactivada temporalmente.',
+                'error_code' => 'tenant_suspended',
+                'suspended_at' => $tenant->suspended_at?->toIso8601String(),
+            ], 403);
+        }
+
+        return null;
     }
 
     /**
@@ -31,8 +54,8 @@ class PortalController extends Controller
     {
         $tenant = $this->resolveTenant($tenantSlug);
 
-        if (!$tenant) {
-            return response()->json(['message' => 'Empresa no encontrada'], 404);
+        if ($guard = $this->guardTenant($tenant)) {
+            return $guard;
         }
 
         return response()->json([
@@ -54,8 +77,8 @@ class PortalController extends Controller
     {
         $tenant = $this->resolveTenant($tenantSlug);
 
-        if (!$tenant) {
-            return response()->json(['message' => 'Empresa no encontrada'], 404);
+        if ($guard = $this->guardTenant($tenant)) {
+            return $guard;
         }
 
         $request->validate([
@@ -102,8 +125,8 @@ class PortalController extends Controller
     {
         $tenant = $this->resolveTenant($tenantSlug);
 
-        if (!$tenant) {
-            return response()->json(['message' => 'Empresa no encontrada'], 404);
+        if ($guard = $this->guardTenant($tenant)) {
+            return $guard;
         }
 
         $request->validate([
@@ -145,8 +168,8 @@ class PortalController extends Controller
     {
         $tenant = $this->resolveTenant($tenantSlug);
 
-        if (!$tenant) {
-            return response()->json(['message' => 'Empresa no encontrada'], 404);
+        if ($guard = $this->guardTenant($tenant)) {
+            return $guard;
         }
 
         app()->instance('tenant_id', $tenant->id);
@@ -168,8 +191,8 @@ class PortalController extends Controller
     {
         $tenant = $this->resolveTenant($tenantSlug);
 
-        if (!$tenant) {
-            return response()->json(['message' => 'Empresa no encontrada'], 404);
+        if ($guard = $this->guardTenant($tenant)) {
+            return $guard;
         }
 
         app()->instance('tenant_id', $tenant->id);
@@ -203,8 +226,8 @@ class PortalController extends Controller
     {
         $tenant = $this->resolveTenant($tenantSlug);
 
-        if (!$tenant) {
-            return response()->json(['message' => 'Empresa no encontrada'], 404);
+        if ($guard = $this->guardTenant($tenant)) {
+            return $guard;
         }
 
         app()->instance('tenant_id', $tenant->id);
@@ -226,8 +249,8 @@ class PortalController extends Controller
     {
         $tenant = $this->resolveTenant($tenantSlug);
 
-        if (!$tenant) {
-            return response()->json(['message' => 'Empresa no encontrada'], 404);
+        if ($guard = $this->guardTenant($tenant)) {
+            return $guard;
         }
 
         app()->instance('tenant_id', $tenant->id);
