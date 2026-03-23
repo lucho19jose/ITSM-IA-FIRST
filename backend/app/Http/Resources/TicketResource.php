@@ -62,6 +62,7 @@ class TicketResource extends JsonResource
             'comments' => TicketCommentResource::collection($this->whenLoaded('comments')),
             'attachments' => $this->whenLoaded('attachments'),
             'time_entries' => TimeEntryResource::collection($this->whenLoaded('timeEntries')),
+            'lifecycle_state' => $this->lifecycle_state,
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];

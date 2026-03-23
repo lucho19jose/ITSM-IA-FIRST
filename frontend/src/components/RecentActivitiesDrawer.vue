@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { getRecentActivities } from '@/api/activities'
 import type { ActivityLog } from '@/types'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 
+const { t } = useI18n()
 const router = useRouter()
 const activities = ref<ActivityLog[]>([])
 const loading = ref(false)
@@ -66,19 +68,19 @@ function formatDateGroup(date: Date): string {
   const diff = today.getTime() - target.getTime()
   const days = Math.floor(diff / 86400000)
 
-  if (days === 0) return 'Hoy'
-  if (days === 1) return 'Ayer'
+  if (days === 0) return t('time.today')
+  if (days === 1) return t('time.yesterday')
   return date.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function timeAgo(dateStr: string): string {
   const diffMin = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
-  if (diffMin < 1) return 'ahora'
-  if (diffMin < 60) return `hace ${diffMin} minuto${diffMin > 1 ? 's' : ''}`
+  if (diffMin < 1) return t('time.now')
+  if (diffMin < 60) return t('time.agoShortMin', { n: diffMin })
   const diffH = Math.floor(diffMin / 60)
-  if (diffH < 24) return `hace ${diffH} hora${diffH > 1 ? 's' : ''}`
+  if (diffH < 24) return t('time.agoShortHour', { n: diffH })
   const diffD = Math.floor(diffH / 24)
-  return `hace ${diffD} día${diffD > 1 ? 's' : ''}`
+  return t('time.agoShortDay', { n: diffD })
 }
 
 function getActionIcon(action: string): string {
@@ -117,23 +119,23 @@ function getActionText(activity: ActivityLog): string {
   const p = activity.properties
   switch (activity.action) {
     case 'created':
-      return 'envió un nuevo ticket'
+      return t('activities.createdTicket')
     case 'commented':
-      return p?.is_internal ? 'ha enviado una nota interna al ticket' : 'ha enviado una reply al ticket'
+      return p?.is_internal ? t('activities.internalNoteTicket') : t('activities.repliedTicket')
     case 'assigned':
-      return `asignó el ticket`
+      return t('activities.assignedTicket')
     case 'closed':
-      return 'cerró el ticket'
+      return t('activities.closedTicket')
     case 'reopened':
-      return 'reabrió el ticket'
+      return t('activities.reopenedTicket')
     case 'updated': {
       const fieldLabels: Record<string, string> = {
-        status: 'cambió el estado del ticket',
-        priority: 'cambió la prioridad del ticket',
-        planned_start_date: 'cambió la fecha de inicio planificada de',
-        planned_end_date: 'cambió la fecha de finalización planificada de',
+        status: t('activities.changedStatus'),
+        priority: t('activities.changedPriority'),
+        planned_start_date: t('activities.changedPlannedStart'),
+        planned_end_date: t('activities.changedPlannedEnd'),
       }
-      return fieldLabels[p?.field ?? ''] ?? 'actualizó el ticket'
+      return fieldLabels[p?.field ?? ''] ?? t('activities.updatedTicket')
     }
     default:
       return activity.description
@@ -156,7 +158,7 @@ function getActionSuffix(activity: ActivityLog): string {
   <q-drawer v-model="drawerOpen" side="right" bordered :width="440" overlay behavior="mobile" class="activities-drawer">
     <!-- Header -->
     <div class="drawer-header row items-center q-px-lg q-py-md">
-      <div class="text-h6 text-weight-bold">Actividades recientes</div>
+      <div class="text-h6 text-weight-bold">{{ t('activities.title') }}</div>
       <q-space />
       <q-btn flat round dense icon="close" size="sm" @click="drawerOpen = false" />
     </div>
@@ -169,8 +171,8 @@ function getActionSuffix(activity: ActivityLog): string {
     <!-- Empty state -->
     <div v-if="!loading && activities.length === 0" class="text-center q-pa-xl text-grey-5">
       <q-icon name="history" size="56px" class="q-mb-md" />
-      <div class="text-body1">Sin actividades recientes</div>
-      <div class="text-caption q-mt-xs">Las actividades de tickets aparecerán aquí</div>
+      <div class="text-body1">{{ t('activities.noActivities') }}</div>
+      <div class="text-caption q-mt-xs">{{ t('activities.noActivitiesHint') }}</div>
     </div>
 
     <!-- Activity timeline -->
@@ -225,7 +227,7 @@ function getActionSuffix(activity: ActivityLog): string {
           <q-btn
             flat no-caps dense
             color="primary"
-            label="Cargar más actividades"
+            :label="t('activities.loadMore')"
             :loading="loading"
             @click="loadMore"
           />

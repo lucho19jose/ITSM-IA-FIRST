@@ -146,4 +146,54 @@ class Ticket extends Model
     {
         return $this->belongsToMany(Asset::class, 'asset_ticket');
     }
+
+    /**
+     * Compute lifecycle state tag (Freshservice-style).
+     */
+    public function getLifecycleStateAttribute(): ?string
+    {
+        if (in_array($this->status, ['resolved', 'closed'])) {
+            return null;
+        }
+
+        if ($this->resolution_due_at && $this->resolution_due_at->isPast()) {
+            return 'overdue';
+        }
+
+        if (!$this->responded_at && $this->status === 'open') {
+            return 'new';
+        }
+
+        $lastCommentUserId = $this->attributes['last_comment_user_id'] ?? null;
+        $lastCommentInternal = $this->attributes['last_comment_internal'] ?? null;
+
+        if ($lastCommentUserId === null) {
+            $lastComment = $this->comments()->latest()->first(['user_id', 'is_internal']);
+            $lastCommentUserId = $lastComment?->user_id;
+            $lastCommentInternal = $lastComment?->is_internal;
+        }
+
+        if ($lastCommentUserId && (int) $lastCommentUserId === $this->requester_id && !$lastCommentInternal) {
+            return 'requester_replied';
+        }
+
+        return null;
+    }
+
+    /**
+     * Scope to add last comment info as subquery (avoids N+1 on lists).
+     */
+    public function scopeWithLastComment($query)
+    {
+        $query->addSelect([
+            'last_comment_user_id' => TicketComment::select('user_id')
+                ->whereColumn('ticket_id', 'tickets.id')
+                ->latest()
+                ->limit(1),
+            'last_comment_internal' => TicketComment::select('is_internal')
+                ->whereColumn('ticket_id', 'tickets.id')
+                ->latest()
+                ->limit(1),
+        ]);
+    }
 }

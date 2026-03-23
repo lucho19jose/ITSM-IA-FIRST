@@ -153,7 +153,7 @@ function onOpenNotifPanel() {
 
 function notifTimeAgo(dateStr: string): string {
   const diffMin = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
-  if (diffMin < 1) return 'ahora'
+  if (diffMin < 1) return t('time.now')
   if (diffMin < 60) return `hace ${diffMin}m`
   const diffH = Math.floor(diffMin / 60)
   if (diffH < 24) return `hace ${diffH}h`
@@ -174,7 +174,7 @@ function getNotifIcon(notif: any): string {
 
 function getNotifMessage(notif: any): string {
   const data = typeof notif.data === 'string' ? JSON.parse(notif.data) : notif.data
-  return data?.message || data?.title || 'Nueva notificacion'
+  return data?.message || data?.title || t('layout.newNotification')
 }
 
 // ─── Real-time WebSocket connection ──────────────────────────────────────────
@@ -265,7 +265,7 @@ function restartTour() {
         <!-- Global search (Freshservice style) -->
         <q-input
           v-model="globalSearch"
-          placeholder="Buscar"
+          :placeholder="t('layout.search')"
           dense outlined rounded
           bg-color="white"
           input-class="text-dark"
@@ -286,7 +286,7 @@ function restartTour() {
         <q-btn
           flat
           icon="add"
-          label="Crear"
+          :label="t('layout.create')"
           no-caps dense
           color="white"
           class="q-mr-sm gt-xs create-btn"
@@ -294,7 +294,7 @@ function restartTour() {
         />
 
         <q-btn flat round icon="history" color="white" @click="showActivities = true">
-          <q-tooltip>Actividades recientes</q-tooltip>
+          <q-tooltip>{{ t('layout.recentActivities') }}</q-tooltip>
         </q-btn>
 
         <q-btn flat round icon="notifications" color="white" @click="onOpenNotifPanel">
@@ -303,9 +303,9 @@ function restartTour() {
           <q-menu v-model="showNotifPanel" anchor="bottom right" self="top right" style="width: 380px; max-height: 480px;" class="notif-menu">
             <!-- Header -->
             <div class="row items-center q-px-md q-py-sm" style="border-bottom: 1px solid #e0e0e0;">
-              <div class="text-subtitle1 text-weight-bold">Notificaciones</div>
+              <div class="text-subtitle1 text-weight-bold">{{ t('layout.notifications') }}</div>
               <q-space />
-              <q-badge v-if="unreadCount > 0" color="primary" :label="`${unreadCount} sin leer`" />
+              <q-badge v-if="unreadCount > 0" color="primary" :label="t('layout.unread', { n: unreadCount })" />
             </div>
 
             <!-- Loading -->
@@ -314,7 +314,7 @@ function restartTour() {
             <!-- Empty state -->
             <div v-if="!notifLoading && notifications.length === 0" class="text-center q-pa-xl text-grey-5">
               <q-icon name="notifications_none" size="48px" class="q-mb-sm" />
-              <div class="text-body2">Sin notificaciones</div>
+              <div class="text-body2">{{ t('layout.noNotifications') }}</div>
             </div>
 
             <!-- Notification list -->
@@ -371,7 +371,7 @@ function restartTour() {
                   <q-item-label caption>{{ auth.user?.email }}</q-item-label>
                   <q-item-label>
                     <router-link to="/profile" class="text-primary" style="font-size: 12px; text-decoration: none;">
-                      Configuración de perfil
+                      {{ t('layout.profileSettings') }}
                     </router-link>
                   </q-item-label>
                 </q-item-section>
@@ -417,9 +417,9 @@ function restartTour() {
                     ]"
                     size="sm"
                   >
-                    <template v-slot:auto><q-tooltip>Sistema</q-tooltip></template>
-                    <template v-slot:light><q-tooltip>Claro</q-tooltip></template>
-                    <template v-slot:dark><q-tooltip>Oscuro</q-tooltip></template>
+                    <template v-slot:auto><q-tooltip>{{ t('layout.themeSystem') }}</q-tooltip></template>
+                    <template v-slot:light><q-tooltip>{{ t('layout.themeLight') }}</q-tooltip></template>
+                    <template v-slot:dark><q-tooltip>{{ t('layout.themeDark') }}</q-tooltip></template>
                   </q-btn-toggle>
                 </q-item-section>
               </q-item>

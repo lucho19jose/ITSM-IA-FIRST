@@ -132,6 +132,7 @@ export interface Ticket {
   satisfaction_rating: number | null
   resolution_notes: string | null
   is_spam: boolean
+  lifecycle_state: 'new' | 'overdue' | 'requester_replied' | null
   time_entries?: TimeEntry[]
   created_at: string
   updated_at: string
