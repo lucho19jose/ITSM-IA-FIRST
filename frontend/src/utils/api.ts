@@ -3,11 +3,30 @@ import NProgress from 'nprogress'
 import { pinia } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import { Notify } from 'quasar'
+import { Capacitor } from '@capacitor/core'
 
 let activeRequests = 0
 
+// En móvil, usar la URL del servidor configurada; en web, usar ruta relativa
+const getApiBaseUrl = (): string => {
+  if (Capacitor.isNativePlatform()) {
+    // URL del backend para la app móvil - configurable via .env
+    // IMPORTANTE: Para dispositivos físicos, usar la IP de tu red local
+    // Ejemplo: VITE_API_URL=http://192.168.1.100:8000/api/v1
+    const apiUrl = import.meta.env.VITE_API_URL
+    if (apiUrl) {
+      console.log('[API] Using configured URL:', apiUrl)
+      return apiUrl
+    }
+    // Fallback para emulador de Android
+    console.warn('[API] No VITE_API_URL configured, using emulator fallback 10.0.2.2')
+    return 'http://10.0.2.2:8000/api/v1'
+  }
+  return '/api/v1'
+}
+
 const instance = axios.create({
-  baseURL: '/api/v1',
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

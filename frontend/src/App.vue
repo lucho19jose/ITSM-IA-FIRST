@@ -1,7 +1,40 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { usePwaUpdate } from '@/composables/usePwaUpdate'
+import { useNative } from '@/composables/useNative'
+import { usePushNotifications } from '@/composables/usePushNotifications'
+import { useQuasar } from 'quasar'
 
+const $q = useQuasar()
 const { needRefresh, applyUpdate, dismissUpdate } = usePwaUpdate()
+const { isNative, handleBackButton, setStatusBarColor } = useNative()
+const { requestPermissions, initPushNotifications } = usePushNotifications()
+
+onMounted(async () => {
+  if (isNative.value) {
+    // Configurar StatusBar con color de la marca
+    await setStatusBarColor('#1976D2')
+
+    // Manejar botón atrás en Android
+    handleBackButton(() => {
+      $q.dialog({
+        title: 'Salir',
+        message: '¿Deseas salir de la aplicación?',
+        cancel: true,
+        persistent: true,
+      }).onOk(() => {
+        // El composable useNative maneja el exit
+      })
+    })
+
+    // Push notifications desactivadas temporalmente
+    // Para habilitarlas, configura Firebase y descomenta:
+    // const granted = await requestPermissions()
+    // if (granted) {
+    //   initPushNotifications()
+    // }
+  }
+})
 </script>
 
 <template>

@@ -8,6 +8,7 @@ import App from './App.vue'
 import '@quasar/extras/material-icons/material-icons.css'
 import 'quasar/src/css/index.sass'
 import 'nprogress/nprogress.css'
+import './assets/native.css'
 
 // Unregister stale service workers in development
 if (import.meta.env.DEV && 'serviceWorker' in navigator) {

@@ -1,0 +1,154 @@
+/**
+ * Estilos globales para soporte de app nativa (Capacitor)
+ * Safe areas para dispositivos con notch
+ * Comportamiento de scroll nativo
+ */
+
+/* Safe Area insets para dispositivos con notch */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
+/* Body base para app nativa */
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Permitir selección de texto en inputs y textareas */
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Header con safe area */
+.app-header {
+  padding-top: var(--safe-area-inset-top);
+}
+
+/* Bottom navigation con safe area */
+.app-bottom-nav {
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+/* Contenido principal con safe areas */
+.app-content {
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+}
+
+/* Ocultar scrollbars en móvil pero mantener funcionalidad */
+.native-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.native-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Animaciones suaves para transiciones de página */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.25s ease-out;
+}
+
+.slide-left-enter-from {
+  transform: translateX(100%);
+}
+
+.slide-left-leave-to {
+  transform: translateX(-30%);
+}
+
+.slide-right-enter-from {
+  transform: translateX(-100%);
+}
+
+.slide-right-leave-to {
+  transform: translateX(30%);
+}
+
+/* Estilo para elementos táctiles */
+.touchable {
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.touchable:active {
+  transform: scale(0.97);
+  opacity: 0.8;
+}
+
+/* Splash screen overlay (mientras carga) */
+.splash-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1976D2;
+  z-index: 99999;
+}
+
+/* Status bar placeholder para cuando está oculta */
+.status-bar-spacer {
+  height: var(--safe-area-inset-top);
+  background: #1976D2;
+}
+
+/* Pull to refresh indicator */
+.pull-to-refresh {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+}
+
+/* Keyboard push behavior */
+.keyboard-open .app-fixed-bottom {
+  display: none;
+}
+
+/* Mejoras para FAB en móvil */
+.q-fab {
+  margin-bottom: calc(16px + var(--safe-area-inset-bottom));
+  margin-right: calc(16px + var(--safe-area-inset-right));
+}
+
+/* Dialog ajustado para móvil */
+.q-dialog__inner--minimized {
+  padding: 16px;
+}
+
+/* Ajustes para teclado virtual */
+@supports (height: 100dvh) {
+  .full-height {
+    height: 100dvh;
+  }
+}
