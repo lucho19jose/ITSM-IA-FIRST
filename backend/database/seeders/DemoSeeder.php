@@ -21,42 +21,63 @@ class DemoSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create demo tenant
-        $tenant = Tenant::create([
-            'name' => 'Empresa Demo SAC',
-            'slug' => 'empresa-demo',
-            'ruc' => '20123456789',
-            'plan' => 'professional',
-            'is_active' => true,
-        ]);
+        // Create or find demo tenant
+        $tenant = Tenant::firstOrCreate(
+            ['slug' => 'empresa-demo'],
+            [
+                'name' => 'Empresa Demo SAC',
+                'ruc' => '20123456789',
+                'plan' => 'professional',
+                'is_active' => true,
+            ]
+        );
 
         app()->instance('tenant_id', $tenant->id);
 
-        // Create users
-        User::withoutGlobalScopes()->create([
-            'name' => 'Admin Demo',
-            'email' => 'admin@demo.com',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-            'tenant_id' => $tenant->id,
-        ]);
+        // Create users (skip if exist)
+        $adminUser = User::withoutGlobalScopes()->firstOrCreate(
+            ['email' => 'admin@demo.com'],
+            [
+                'name' => 'Admin Demo',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'tenant_id' => $tenant->id,
+            ]
+        );
 
-        User::withoutGlobalScopes()->create([
-            'name' => 'Agente Soporte',
-            'email' => 'agente@demo.com',
-            'password' => Hash::make('password'),
-            'role' => 'agent',
-            'tenant_id' => $tenant->id,
-        ]);
+        $agentUser = User::withoutGlobalScopes()->firstOrCreate(
+            ['email' => 'agente@demo.com'],
+            [
+                'name' => 'Agente Soporte',
+                'password' => Hash::make('password'),
+                'role' => 'agent',
+                'tenant_id' => $tenant->id,
+            ]
+        );
 
-        User::withoutGlobalScopes()->create([
-            'name' => 'Usuario Final',
-            'email' => 'usuario@demo.com',
-            'password' => Hash::make('password'),
-            'role' => 'end_user',
-            'tenant_id' => $tenant->id,
-        ]);
+        $endUser = User::withoutGlobalScopes()->firstOrCreate(
+            ['email' => 'usuario@demo.com'],
+            [
+                'name' => 'Usuario Final',
+                'password' => Hash::make('password'),
+                'role' => 'end_user',
+                'tenant_id' => $tenant->id,
+            ]
+        );
 
+        // Skip reference data if already seeded (check for SLA policies)
+        if (SlaPolicy::count() === 0) {
+            $this->seedReferenceData($tenant, $adminUser, $agentUser);
+        }
+
+        // Always seed demo tickets if none exist
+        if (\App\Models\Ticket::count() === 0) {
+            $this->seedDemoTickets($tenant, $adminUser, $agentUser, $endUser);
+        }
+    }
+
+    private function seedReferenceData(Tenant $tenant, User $adminUser, User $agentUser): void
+    {
         // SLA Policies
         $slaPolicies = [
             ['name' => 'SLA Urgente', 'priority' => 'urgent', 'response_time' => 30, 'resolution_time' => 240],
@@ -198,8 +219,6 @@ class DemoSeeder extends Seeder
             'icon' => 'menu_book',
         ]);
 
-        $adminUser = User::withoutGlobalScopes()->where('email', 'admin@demo.com')->first();
-
         KnowledgeBaseArticle::create([
             'category_id' => $kbCat->id,
             'title' => 'Cómo restablecer tu contraseña',
@@ -213,8 +232,6 @@ class DemoSeeder extends Seeder
         ]);
 
         // Canned Responses
-        $agentUser = User::withoutGlobalScopes()->where('email', 'agente@demo.com')->first();
-
         \App\Models\CannedResponse::create([
             'user_id' => $adminUser->id,
             'title' => 'Saludo inicial',
@@ -438,5 +455,128 @@ class DemoSeeder extends Seeder
             'mac_address' => '00:1A:2B:3C:4D:5E',
             'custom_fields' => ['device_type' => 'Switch', 'ports' => 48, 'firmware' => 'IOS XE 17.9'],
         ]);
+    }
+
+    private function seedDemoTickets(Tenant $tenant, User $adminUser, User $agentUser, User $endUser): void
+    {
+        $category = Category::first();
+        $sla = SlaPolicy::where('priority', 'medium')->first();
+
+        $tickets = [
+            [
+                'title' => 'No puedo acceder al correo corporativo',
+                'description' => 'Desde esta mañana no puedo iniciar sesión en Outlook. Me aparece error de autenticación. Ya intenté cambiar la contraseña sin éxito.',
+                'status' => 'open',
+                'priority' => 'high',
+                'type' => 'incident',
+                'requester_id' => $endUser->id,
+                'assigned_to' => $agentUser->id,
+                'source' => 'portal',
+            ],
+            [
+                'title' => 'Laptop muy lenta después de la actualización de Windows',
+                'description' => 'Mi laptop Dell se puso extremadamente lenta después de la última actualización de Windows. Tarda 10 minutos en iniciar y las aplicaciones se congelan constantemente.',
+                'status' => 'in_progress',
+                'priority' => 'medium',
+                'type' => 'incident',
+                'requester_id' => $endUser->id,
+                'assigned_to' => $agentUser->id,
+                'source' => 'portal',
+            ],
+            [
+                'title' => 'Solicitud de acceso a carpeta compartida de Finanzas',
+                'description' => 'Necesito acceso de lectura a la carpeta compartida \\\\server\\finanzas\\reportes para el proyecto de auditoría Q1 2026.',
+                'status' => 'pending',
+                'priority' => 'low',
+                'type' => 'request',
+                'requester_id' => $endUser->id,
+                'assigned_to' => $adminUser->id,
+                'source' => 'portal',
+            ],
+            [
+                'title' => 'Impresora del piso 3 no imprime',
+                'description' => 'La impresora HP LaserJet del piso 3 muestra luz roja y no responde. Varios compañeros del área reportan el mismo problema.',
+                'status' => 'open',
+                'priority' => 'urgent',
+                'type' => 'incident',
+                'requester_id' => $adminUser->id,
+                'assigned_to' => null,
+                'source' => 'email',
+            ],
+            [
+                'title' => 'Instalar Adobe Acrobat Pro en mi equipo',
+                'description' => 'Requiero Adobe Acrobat Pro para editar y firmar documentos PDF. Mi puesto lo requiere según la política de software aprobada.',
+                'status' => 'open',
+                'priority' => 'low',
+                'type' => 'request',
+                'requester_id' => $endUser->id,
+                'assigned_to' => $agentUser->id,
+                'source' => 'portal',
+            ],
+            [
+                'title' => 'VPN se desconecta cada 5 minutos',
+                'description' => 'La conexión VPN corporativa se cae constantemente. Necesito estar conectado para acceder a los sistemas internos desde casa. Ya reinstalé el cliente VPN.',
+                'status' => 'in_progress',
+                'priority' => 'high',
+                'type' => 'incident',
+                'requester_id' => $endUser->id,
+                'assigned_to' => $agentUser->id,
+                'source' => 'phone',
+            ],
+            [
+                'title' => 'Error 500 en el sistema de facturación',
+                'description' => 'Al intentar generar facturas electrónicas, el sistema muestra Error 500. Esto está bloqueando las operaciones del día. Afecta a todo el equipo de facturación.',
+                'status' => 'in_progress',
+                'priority' => 'urgent',
+                'type' => 'incident',
+                'requester_id' => $adminUser->id,
+                'assigned_to' => $adminUser->id,
+                'source' => 'portal',
+            ],
+            [
+                'title' => 'Solicitud de nuevo monitor para puesto de trabajo',
+                'description' => 'Mi monitor actual tiene líneas verticales y parpadea. Solicito reemplazo por un monitor de al menos 24 pulgadas.',
+                'status' => 'resolved',
+                'priority' => 'low',
+                'type' => 'request',
+                'requester_id' => $endUser->id,
+                'assigned_to' => $agentUser->id,
+                'source' => 'portal',
+                'resolved_at' => now()->subDays(1),
+            ],
+            [
+                'title' => 'Configurar correo en celular nuevo',
+                'description' => 'Acabo de recibir un celular corporativo nuevo y necesito configurar el correo de la empresa. Es un Samsung Galaxy S24.',
+                'status' => 'resolved',
+                'priority' => 'low',
+                'type' => 'request',
+                'requester_id' => $endUser->id,
+                'assigned_to' => $agentUser->id,
+                'source' => 'portal',
+                'resolved_at' => now()->subHours(6),
+            ],
+            [
+                'title' => 'Red WiFi intermitente en sala de reuniones',
+                'description' => 'La señal WiFi en la sala de reuniones "Lima" se pierde durante las videoconferencias. Ocurre varias veces al día y afecta las reuniones con clientes.',
+                'status' => 'open',
+                'priority' => 'medium',
+                'type' => 'incident',
+                'requester_id' => $adminUser->id,
+                'assigned_to' => null,
+                'source' => 'email',
+            ],
+        ];
+
+        $ticketNumber = 1;
+        foreach ($tickets as $ticketData) {
+            $ticketData['tenant_id'] = $tenant->id;
+            $ticketData['category_id'] = $category?->id;
+            $ticketData['sla_policy_id'] = $sla?->id;
+            $ticketData['ticket_number'] = 'TK-' . now()->format('Ymd') . '-' . str_pad($ticketNumber++, 5, '0', STR_PAD_LEFT);
+            $ticketData['created_at'] = now()->subDays(rand(0, 7))->subHours(rand(0, 12));
+            $ticketData['updated_at'] = $ticketData['created_at'];
+
+            \App\Models\Ticket::withoutGlobalScopes()->create($ticketData);
+        }
     }
 }
