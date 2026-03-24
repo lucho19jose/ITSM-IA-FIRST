@@ -46,15 +46,19 @@ use Illuminate\Support\Facades\Route;
 Broadcast::routes(['middleware' => ['auth:api'], 'prefix' => 'api/v1']);
 
 Route::prefix('v1')->group(function () {
-    // Public auth
-    Route::post('auth/register', [AuthController::class, 'register']);
-    Route::post('auth/login', [AuthController::class, 'login']);
+    // Public auth (rate limited: 5 attempts/min)
+    Route::middleware('throttle:auth')->group(function () {
+        Route::post('auth/register', [AuthController::class, 'register']);
+        Route::post('auth/login', [AuthController::class, 'login']);
+        Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword']);
+        Route::post('auth/reset-password', [AuthController::class, 'resetPassword']);
+    });
 
     // Public tenant info (for subdomain detection)
     Route::get('tenant-info', [AuthController::class, 'tenantInfo']);
 
-    // Protected routes
-    Route::middleware(['auth:api', 'tenant', 'plan.limits'])->group(function () {
+    // Protected routes (rate limited: 60 req/min)
+    Route::middleware(['auth:api', 'tenant', 'plan.limits', 'throttle:api'])->group(function () {
         // Auth
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('auth/me', [AuthController::class, 'me']);
@@ -377,8 +381,8 @@ Route::prefix('v1')->group(function () {
     // ─── End-user Portal (public routes) ────────────────────────────────
     Route::prefix('portal/{tenantSlug}')->group(function () {
         Route::get('info', [PortalController::class, 'tenantInfo']);
-        Route::post('login', [PortalController::class, 'login']);
-        Route::post('register', [PortalController::class, 'register']);
+        Route::post('login', [PortalController::class, 'login'])->middleware('throttle:auth');
+        Route::post('register', [PortalController::class, 'register'])->middleware('throttle:auth');
         Route::get('kb/categories', [PortalController::class, 'kbCategories']);
         Route::get('kb/articles', [PortalController::class, 'kbArticles']);
         Route::get('kb/articles/{article}', [PortalController::class, 'kbArticle']);

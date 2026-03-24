@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Mail\PasswordResetMail;
 use App\Mail\WelcomeMail;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -141,6 +143,87 @@ class AuthController extends Controller
                 'slug' => $tenant->slug,
                 'plan' => $tenant->plan,
             ],
+        ]);
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $user = User::withoutGlobalScopes()->where('email', $request->email)->first();
+
+        // Always return success to prevent email enumeration
+        if (!$user) {
+            return response()->json([
+                'message' => 'Si el correo existe, recibirás un enlace para restablecer tu contraseña.',
+            ]);
+        }
+
+        // Delete old tokens for this email
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        $token = Str::random(64);
+
+        DB::table('password_reset_tokens')->insert([
+            'email' => $request->email,
+            'token' => Hash::make($token),
+            'created_at' => now(),
+        ]);
+
+        $resetUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5174'))
+            . '/reset-password?token=' . $token . '&email=' . urlencode($request->email);
+
+        Mail::to($user->email)->queue(new PasswordResetMail($user, $resetUrl));
+
+        return response()->json([
+            'message' => 'Si el correo existe, recibirás un enlace para restablecer tu contraseña.',
+        ]);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'token' => 'required|string',
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ]);
+
+        $record = DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->first();
+
+        if (!$record || !Hash::check($request->token, $record->token)) {
+            return response()->json([
+                'message' => 'Token inválido o expirado.',
+            ], 422);
+        }
+
+        // Check expiration (60 minutes)
+        if (now()->diffInMinutes($record->created_at) > 60) {
+            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            return response()->json([
+                'message' => 'Token expirado. Solicita un nuevo enlace.',
+            ], 422);
+        }
+
+        $user = User::withoutGlobalScopes()->where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Usuario no encontrado.',
+            ], 404);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Delete used token
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return response()->json([
+            'message' => 'Contraseña restablecida exitosamente.',
         ]);
     }
 }

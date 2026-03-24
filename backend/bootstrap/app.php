@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.feature' => \App\Http\Middleware\CheckFeature::class,
         ]);
         $middleware->api(prepend: [
+            \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\ResolveSubdomainTenant::class,
         ]);
     })
