@@ -437,6 +437,7 @@ export default {
     themeSystem: 'Sistema',
     themeLight: 'Claro',
     themeDark: 'Oscuro',
+    expandSidebar: 'Expandir menú lateral',
   },
   activities: {
     title: 'Actividades recientes',

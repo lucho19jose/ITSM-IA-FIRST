@@ -250,7 +250,7 @@ onMounted(() => {
 
     <!-- Create/Edit Dialog -->
     <q-dialog v-model="showDialog" persistent>
-      <q-card style="min-width: 550px;">
+      <q-card style="width: 550px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ editingId ? t('knownErrors.edit') : t('knownErrors.create') }}</div>
         </q-card-section>

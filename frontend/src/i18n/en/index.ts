@@ -437,6 +437,7 @@ export default {
     themeSystem: 'System',
     themeLight: 'Light',
     themeDark: 'Dark',
+    expandSidebar: 'Expand sidebar',
   },
   activities: {
     title: 'Recent activities',

@@ -176,7 +176,7 @@ onMounted(loadTypes)
 
     <!-- Create/Edit Dialog -->
     <q-dialog v-model="showDialog" persistent>
-      <q-card style="min-width: 550px; max-width: 700px;">
+      <q-card style="width: 700px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ editingType ? t('assets.editType') : t('assets.newType') }}</div>
         </q-card-section>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useQuasar, Notify } from 'quasar'
@@ -19,7 +19,18 @@ const $q = useQuasar()
 const router = useRouter()
 const auth = useAuthStore()
 const leftDrawerOpen = ref(true)
+const miniState = ref(localStorage.getItem('autoservice_sidebar_mini') === '1')
+const isMini = computed(() => miniState.value && $q.screen.gt.sm)
 const globalSearch = ref('')
+
+function toggleDrawer() {
+  if ($q.screen.lt.md) {
+    leftDrawerOpen.value = !leftDrawerOpen.value
+  } else {
+    miniState.value = !miniState.value
+    localStorage.setItem('autoservice_sidebar_mini', miniState.value ? '1' : '0')
+  }
+}
 
 function onGlobalSearch() {
   if (!globalSearch.value.trim()) return
@@ -258,7 +269,7 @@ function restartTour() {
   <q-layout view="hHh LpR fFf">
     <q-header elevated class="bg-primary">
       <q-toolbar>
-        <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
+        <q-btn flat dense round icon="menu" @click="toggleDrawer" />
         <q-toolbar-title class="gt-sm">AutoService</q-toolbar-title>
         <q-space />
 
@@ -300,7 +311,7 @@ function restartTour() {
         <q-btn flat round icon="notifications" color="white" @click="onOpenNotifPanel">
           <q-badge v-if="unreadCount > 0" color="red" floating>{{ unreadCount }}</q-badge>
 
-          <q-menu v-model="showNotifPanel" anchor="bottom right" self="top right" style="width: 380px; max-height: 480px;" class="notif-menu">
+          <q-menu v-model="showNotifPanel" anchor="bottom right" self="top right" style="width: 380px; max-width: 95vw; max-height: 480px;" class="notif-menu">
             <!-- Header -->
             <div class="row items-center q-px-md q-py-sm" style="border-bottom: 1px solid #e0e0e0;">
               <div class="text-subtitle1 text-weight-bold">{{ t('layout.notifications') }}</div>
@@ -356,7 +367,7 @@ function restartTour() {
             <span v-else>{{ auth.user?.name?.charAt(0)?.toUpperCase() }}</span>
           </q-avatar>
 
-          <q-menu anchor="bottom right" self="top right" style="min-width: 300px;">
+          <q-menu anchor="bottom right" self="top right" style="min-width: 280px; max-width: 95vw;">
             <q-list>
               <!-- Header: avatar + name + email + profile link -->
               <q-item class="q-py-md">
@@ -464,66 +475,40 @@ function restartTour() {
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" bordered :width="260" show-if-above>
-      <q-list>
-        <!-- Tenant branding header -->
-        <div class="drawer-brand q-pa-md">
-          <div class="row items-center no-wrap q-gutter-sm">
-            <div v-if="auth.tenant?.logo_url" class="drawer-brand-logo">
-              <img :src="auth.tenant.logo_url" alt="Logo" />
-            </div>
-            <q-avatar v-else color="primary" text-color="white" size="36px" font-size="16px">
-              {{ (auth.tenant?.name || 'A').charAt(0).toUpperCase() }}
-            </q-avatar>
-            <div class="col ellipsis">
-              <div class="text-subtitle2 text-weight-bold ellipsis">
-                {{ auth.tenant?.name || 'AutoService' }}
+    <q-drawer
+      v-model="leftDrawerOpen"
+      bordered
+      :width="260"
+      :mini-width="68"
+      :mini="isMini"
+      show-if-above
+      :class="{ 'mini-drawer': isMini }"
+    >
+      <q-scroll-area class="fit">
+        <q-list>
+          <!-- Tenant branding header -->
+          <div class="drawer-brand q-pa-md" :class="{ 'drawer-brand--mini': isMini }">
+            <div class="row items-center no-wrap q-gutter-sm" :class="{ 'justify-center': isMini }">
+              <div v-if="auth.tenant?.logo_url" class="drawer-brand-logo">
+                <img :src="auth.tenant.logo_url" alt="Logo" />
               </div>
-              <div v-if="auth.tenant?.slug" class="text-caption text-grey ellipsis">
-                {{ auth.tenant.slug }}.autoservice.test
+              <q-avatar v-else color="primary" text-color="white" size="36px" font-size="16px">
+                {{ (auth.tenant?.name || 'A').charAt(0).toUpperCase() }}
+              </q-avatar>
+              <div v-if="!isMini" class="col ellipsis">
+                <div class="text-subtitle2 text-weight-bold ellipsis">
+                  {{ auth.tenant?.name || 'AutoService' }}
+                </div>
+                <div v-if="auth.tenant?.slug" class="text-caption text-grey ellipsis">
+                  {{ auth.tenant.slug }}.autoservice.test
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <q-separator />
+          <q-separator />
 
-        <q-item
-          v-for="item in menuItems"
-          :key="item.to"
-          :to="item.to"
-          clickable
-          v-ripple
-          active-class="text-primary bg-blue-1"
-        >
-          <q-item-section avatar>
-            <q-icon :name="item.icon" />
-          </q-item-section>
-          <q-item-section>{{ t(item.label) }}</q-item-section>
-          <q-item-section v-if="(item as any).badge && pendingApprovalsCount > 0" side>
-            <q-badge color="red" :label="pendingApprovalsCount" />
-          </q-item-section>
-        </q-item>
-
-        <template v-if="auth.isAgent && !auth.isAdmin">
-          <q-separator class="q-my-sm" />
           <q-item
-            to="/settings/canned-responses"
-            clickable
-            v-ripple
-            active-class="text-primary bg-blue-1"
-          >
-            <q-item-section avatar>
-              <q-icon name="quickreply" />
-            </q-item-section>
-            <q-item-section>{{ t('nav.cannedResponses') }}</q-item-section>
-          </q-item>
-        </template>
-
-        <template v-if="auth.isAdmin">
-          <q-separator class="q-my-sm" />
-          <q-item-label header>Admin</q-item-label>
-          <q-item
-            v-for="item in adminItems"
+            v-for="item in menuItems"
             :key="item.to"
             :to="item.to"
             clickable
@@ -532,11 +517,67 @@ function restartTour() {
           >
             <q-item-section avatar>
               <q-icon :name="item.icon" />
+              <q-tooltip v-if="isMini" anchor="center right" self="center left" :offset="[10, 0]">
+                {{ t(item.label) }}
+              </q-tooltip>
             </q-item-section>
-            <q-item-section>{{ t(item.label) }}</q-item-section>
+            <q-item-section v-if="!isMini">{{ t(item.label) }}</q-item-section>
+            <q-item-section v-if="!isMini && (item as any).badge && pendingApprovalsCount > 0" side>
+              <q-badge color="red" :label="pendingApprovalsCount" />
+            </q-item-section>
+            <q-badge v-if="isMini && (item as any).badge && pendingApprovalsCount > 0" color="red" floating :label="pendingApprovalsCount" />
           </q-item>
-        </template>
-      </q-list>
+
+          <template v-if="auth.isAgent && !auth.isAdmin">
+            <q-separator class="q-my-sm" />
+            <q-item
+              to="/settings/canned-responses"
+              clickable
+              v-ripple
+              active-class="text-primary bg-blue-1"
+            >
+              <q-item-section avatar>
+                <q-icon name="quickreply" />
+                <q-tooltip v-if="isMini" anchor="center right" self="center left" :offset="[10, 0]">
+                  {{ t('nav.cannedResponses') }}
+                </q-tooltip>
+              </q-item-section>
+              <q-item-section v-if="!isMini">{{ t('nav.cannedResponses') }}</q-item-section>
+            </q-item>
+          </template>
+
+          <template v-if="auth.isAdmin">
+            <q-separator class="q-my-sm" />
+            <q-item-label v-if="!isMini" header>Admin</q-item-label>
+            <div v-else class="text-center q-my-xs">
+              <q-icon name="more_horiz" size="18px" color="grey-5" />
+            </div>
+            <q-item
+              v-for="item in adminItems"
+              :key="item.to"
+              :to="item.to"
+              clickable
+              v-ripple
+              active-class="text-primary bg-blue-1"
+            >
+              <q-item-section avatar>
+                <q-icon :name="item.icon" />
+                <q-tooltip v-if="isMini" anchor="center right" self="center left" :offset="[10, 0]">
+                  {{ t(item.label) }}
+                </q-tooltip>
+              </q-item-section>
+              <q-item-section v-if="!isMini">{{ t(item.label) }}</q-item-section>
+            </q-item>
+          </template>
+        </q-list>
+      </q-scroll-area>
+
+      <!-- Mini mode expand button at bottom -->
+      <div v-if="isMini" class="mini-expand-hint">
+        <q-btn flat dense round icon="chevron_right" size="sm" color="grey-6" @click="toggleDrawer">
+          <q-tooltip>{{ t('layout.expandSidebar') }}</q-tooltip>
+        </q-btn>
+      </div>
     </q-drawer>
 
     <RecentActivitiesDrawer v-model="showActivities" />
@@ -550,6 +591,11 @@ function restartTour() {
 <style scoped>
 .drawer-brand {
   min-height: 56px;
+}
+.drawer-brand--mini {
+  padding: 12px 8px !important;
+  display: flex;
+  justify-content: center;
 }
 .drawer-brand-logo {
   width: 36px;
@@ -566,10 +612,36 @@ function restartTour() {
   border-radius: 6px;
 }
 
+/* Mini drawer styles */
+.mini-expand-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+}
+.mini-drawer :deep(.q-item) {
+  padding-left: 0;
+  padding-right: 0;
+  justify-content: center;
+}
+.mini-drawer :deep(.q-item__section--avatar) {
+  min-width: unset;
+  padding-right: 0;
+}
+
 /* Global search bar */
 .header-search {
   max-width: 380px;
-  min-width: 200px;
+  min-width: 120px;
+  flex: 1;
+}
+@media (max-width: 599px) {
+  .header-search {
+    max-width: 160px;
+    min-width: 80px;
+  }
 }
 .header-search :deep(.q-field__control) {
   height: 36px;

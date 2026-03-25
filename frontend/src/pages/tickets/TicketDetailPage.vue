@@ -1085,7 +1085,8 @@ function mdToHtml(text: string): string {
               <q-tooltip>{{ isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos' }}</q-tooltip>
             </q-btn>
 
-            <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn">
+            <!-- Desktop action buttons (hidden on mobile) -->
+            <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn gt-sm">
               Compartir
               <q-icon name="arrow_drop_down" size="18px" />
               <q-menu>
@@ -1102,12 +1103,12 @@ function mdToHtml(text: string): string {
               </q-menu>
             </q-btn>
 
-            <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn"
+            <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn gt-sm"
               @click="router.push(`/tickets/${props.id}/edit`)">
               Editar
             </q-btn>
 
-            <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn">
+            <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn gt-sm">
               Responder
               <q-icon name="arrow_drop_down" size="18px" />
               <q-menu>
@@ -1124,7 +1125,7 @@ function mdToHtml(text: string): string {
               </q-menu>
             </q-btn>
 
-            <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn">
+            <q-btn v-if="canManage" outline color="grey-8" no-caps dense class="topbar-btn gt-sm">
               Asociar
               <q-icon name="arrow_drop_down" size="18px" />
               <q-menu>
@@ -1151,14 +1152,14 @@ function mdToHtml(text: string): string {
 
             <q-btn
               v-if="canManage && ticket.status !== 'closed'"
-              outline color="grey-8" no-caps dense class="topbar-btn"
+              outline color="grey-8" no-caps dense class="topbar-btn gt-sm"
               @click="onCloseTicket"
             >
               Cerrar
             </q-btn>
             <q-btn
               v-if="canManage && ticket.status === 'closed'"
-              outline color="primary" no-caps dense class="topbar-btn"
+              outline color="primary" no-caps dense class="topbar-btn gt-sm"
               @click="onReopenTicket"
             >
               Reabrir
@@ -1166,7 +1167,39 @@ function mdToHtml(text: string): string {
 
             <q-btn flat dense round icon="more_vert" color="grey-7" size="sm">
               <q-menu>
-                <q-list dense style="min-width: 220px">
+                <q-list dense style="min-width: 220px; max-width: 90vw;">
+                  <!-- Mobile-only: main actions -->
+                  <q-item v-if="canManage" clickable v-close-popup class="lt-md" @click="openReply(false)">
+                    <q-item-section avatar><q-icon name="reply" size="18px" /></q-item-section>
+                    <q-item-section>Responder</q-item-section>
+                  </q-item>
+                  <q-item v-if="canManage" clickable v-close-popup class="lt-md" @click="openReply(true)">
+                    <q-item-section avatar><q-icon name="note" size="18px" /></q-item-section>
+                    <q-item-section>Añadir nota</q-item-section>
+                  </q-item>
+                  <q-item v-if="canManage" clickable v-close-popup class="lt-md" @click="router.push(`/tickets/${props.id}/edit`)">
+                    <q-item-section avatar><q-icon name="edit" size="18px" /></q-item-section>
+                    <q-item-section>Editar</q-item-section>
+                  </q-item>
+                  <q-item v-if="canManage" clickable v-close-popup class="lt-md" @click="onCopyLink">
+                    <q-item-section avatar><q-icon name="share" size="18px" /></q-item-section>
+                    <q-item-section>Compartir</q-item-section>
+                  </q-item>
+                  <q-item v-if="canManage" clickable v-close-popup class="lt-md" @click="assocForm.type = 'related'; showAssocDialog = true">
+                    <q-item-section avatar><q-icon name="link" size="18px" /></q-item-section>
+                    <q-item-section>Asociar</q-item-section>
+                  </q-item>
+                  <q-item v-if="canManage && ticket.status !== 'closed'" clickable v-close-popup class="lt-md" @click="onCloseTicket">
+                    <q-item-section avatar><q-icon name="check_circle" size="18px" /></q-item-section>
+                    <q-item-section>Cerrar</q-item-section>
+                  </q-item>
+                  <q-item v-if="canManage && ticket.status === 'closed'" clickable v-close-popup class="lt-md" @click="onReopenTicket">
+                    <q-item-section avatar><q-icon name="refresh" size="18px" color="primary" /></q-item-section>
+                    <q-item-section>Reabrir</q-item-section>
+                  </q-item>
+                  <q-separator class="lt-md" />
+
+                  <!-- Existing menu items (all screens) -->
                   <q-item v-if="canManage" clickable v-close-popup @click="showMergeDialog = true">
                     <q-item-section avatar><q-icon name="merge_type" size="18px" /></q-item-section>
                     <q-item-section>Combinar</q-item-section>
@@ -1542,7 +1575,7 @@ function mdToHtml(text: string): string {
                     class="q-ml-sm"
                   >
                     <q-tooltip>{{ t('cannedResponses.insertResponse') }}</q-tooltip>
-                    <q-menu v-model="showCannedMenu" anchor="top left" self="bottom left" style="width: 380px; max-height: 400px;">
+                    <q-menu v-model="showCannedMenu" anchor="top left" self="bottom left" style="width: 380px; max-width: 90vw; max-height: 400px;">
                       <div class="q-pa-sm">
                         <q-input
                           v-model="cannedSearch"
@@ -2396,7 +2429,7 @@ function mdToHtml(text: string): string {
 
     <!-- Time Entry Dialog -->
     <q-dialog v-model="showTimeDialog">
-      <q-card style="min-width: 400px;">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">Añadir tiempo</div>
         </q-card-section>
@@ -2447,7 +2480,7 @@ function mdToHtml(text: string): string {
 
     <!-- Association Dialog -->
     <q-dialog v-model="showAssocDialog">
-      <q-card style="min-width: 500px;">
+      <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">
             Asociar ticket
@@ -2500,7 +2533,7 @@ function mdToHtml(text: string): string {
 
     <!-- Merge Dialog -->
     <q-dialog v-model="showMergeDialog">
-      <q-card style="min-width: 500px;">
+      <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">Combinar tickets</div>
           <div class="text-caption text-grey q-mt-xs">
@@ -2547,7 +2580,7 @@ function mdToHtml(text: string): string {
 
     <!-- Scenario Dialog -->
     <q-dialog v-model="showScenarioDialog">
-      <q-card style="min-width: 400px;">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">Ejecutar situación</div>
           <div class="text-caption text-grey q-mt-xs">Selecciona un escenario para aplicar al ticket</div>
@@ -2586,7 +2619,7 @@ function mdToHtml(text: string): string {
 
     <!-- Share via Email Dialog -->
     <q-dialog v-model="showShareDialog">
-      <q-card style="min-width: 420px;">
+      <q-card style="width: 420px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">Compartir por email</div>
         </q-card-section>
@@ -2625,7 +2658,7 @@ function mdToHtml(text: string): string {
 
     <!-- Link to Problem Dialog -->
     <q-dialog v-model="showProblemLinkDialog">
-      <q-card style="min-width: 500px;">
+      <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('problems.linkToProblem') }}</div>
         </q-card-section>

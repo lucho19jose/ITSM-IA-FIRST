@@ -535,7 +535,7 @@ onMounted(async () => {
 
     <!-- Save Dialog -->
     <q-dialog v-model="showSaveDialog" persistent>
-      <q-card style="min-width: 420px;">
+      <q-card style="width: 420px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ isEditing ? t('reports.editReport') : t('reports.saveReport') }}</div>
         </q-card-section>

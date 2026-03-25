@@ -1009,8 +1009,50 @@ onMounted(async () => {
             @ticket-updated="onBoardTicketUpdated"
           />
 
-          <!-- List View (Table) -->
-          <q-markup-table v-else flat separator="horizontal" class="ticket-table" :class="{ 'compact-density': rowDensity === 'compact' }" wrap-cells>
+          <!-- Mobile Card View (replaces table on small screens) -->
+          <div v-if="viewMode === 'list' && $q.screen.lt.md" class="mobile-ticket-list">
+            <div v-if="!loading && tickets.length === 0" class="text-center text-grey q-pa-xl">
+              <q-icon name="inbox" size="48px" class="q-mb-sm" color="grey-4" />
+              <div class="text-subtitle1">{{ t('ticketList.noTickets') }}</div>
+            </div>
+            <q-list separator>
+              <q-item
+                v-for="ticket in tickets"
+                :key="'m-' + ticket.id"
+                clickable
+                v-ripple
+                :class="{ 'resolved-row-mobile': ticket.status === 'resolved' || ticket.status === 'closed' }"
+                @click="goToTicket(ticket)"
+              >
+                <q-item-section>
+                  <q-item-label class="text-weight-medium" :class="{ 'text-grey-6': ticket.status === 'resolved' || ticket.status === 'closed' }">
+                    {{ ticket.title }}
+                  </q-item-label>
+                  <q-item-label caption>
+                    {{ ticket.ticket_number }}
+                    <span v-if="ticket.requester?.name"> · {{ ticket.requester.name }}</span>
+                  </q-item-label>
+                  <q-item-label class="q-mt-xs q-gutter-x-xs">
+                    <q-badge :color="getStatusColor(ticket.status)" class="q-pa-xs" style="font-size: 10px;">
+                      {{ t(`tickets.statuses.${ticket.status}`) }}
+                    </q-badge>
+                    <q-badge outline :color="getPriorityColor(ticket.priority)" class="q-pa-xs" style="font-size: 10px;">
+                      {{ t(`tickets.priorities.${ticket.priority}`) }}
+                    </q-badge>
+                    <span v-if="ticket.assignee" class="text-caption text-grey-6">
+                      · {{ ticket.assignee.name }}
+                    </span>
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side top>
+                  <q-item-label caption>{{ formatDate(ticket.created_at) }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+
+          <!-- List View (Table) - desktop only -->
+          <q-markup-table v-else-if="viewMode === 'list'" flat separator="horizontal" class="ticket-table" :class="{ 'compact-density': rowDensity === 'compact' }" wrap-cells>
             <thead>
               <tr>
                 <th style="width: 40px;" />
@@ -1030,7 +1072,10 @@ onMounted(async () => {
                 v-for="ticket in tickets"
                 :key="ticket.id"
                 class="ticket-row"
-                :class="{ 'selected-row': selectedIds.includes(ticket.id) }"
+                :class="{
+                  'selected-row': selectedIds.includes(ticket.id),
+                  'resolved-row': ticket.status === 'resolved' || ticket.status === 'closed',
+                }"
                 @click="goToTicket(ticket)"
               >
                 <td @click.stop>
@@ -1465,7 +1510,7 @@ onMounted(async () => {
 
     <!-- Column Settings Dialog (Freshservice style) -->
     <q-dialog v-model="showColumnDialog">
-      <q-card style="min-width: 620px; max-width: 680px;">
+      <q-card style="width: 680px; max-width: 90vw;">
         <q-card-section class="q-pb-sm">
           <!-- Row density -->
           <div class="text-subtitle2 text-weight-bold q-mb-sm">Densidad de filas</div>
@@ -1778,6 +1823,45 @@ onMounted(async () => {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* Resolved/closed tickets – muted text like Freshservice */
+.ticket-table :deep(tbody tr.resolved-row) {
+  color: #a0a4ab;
+}
+.ticket-table :deep(tbody tr.resolved-row td) {
+  color: #a0a4ab;
+}
+.ticket-table :deep(tbody tr.resolved-row .text-body2),
+.ticket-table :deep(tbody tr.resolved-row .text-weight-medium) {
+  color: #a0a4ab !important;
+  font-weight: 400 !important;
+}
+.ticket-table :deep(tbody tr.resolved-row .text-caption) {
+  color: #bfc3ca !important;
+}
+.ticket-table :deep(tbody tr.resolved-row:hover) {
+  background-color: #f9fafb;
+}
+
+/* Dark mode resolved rows */
+.body--dark .ticket-table :deep(tbody tr.resolved-row) {
+  color: #6b6f78;
+}
+.body--dark .ticket-table :deep(tbody tr.resolved-row td) {
+  color: #6b6f78;
+}
+.body--dark .ticket-table :deep(tbody tr.resolved-row .text-body2),
+.body--dark .ticket-table :deep(tbody tr.resolved-row .text-weight-medium) {
+  color: #6b6f78 !important;
+}
+.body--dark .ticket-table :deep(tbody tr.resolved-row .text-caption) {
+  color: #555860 !important;
+}
+/* Mobile ticket list */
+.mobile-ticket-list .resolved-row-mobile {
+  opacity: 0.6;
+}
+
 .priority-dot {
   width: 10px;
   height: 10px;

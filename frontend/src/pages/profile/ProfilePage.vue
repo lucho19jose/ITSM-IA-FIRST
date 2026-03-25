@@ -481,7 +481,7 @@ async function toggleAvailability(val: boolean) {
 
     <!-- ── Edit Profile Dialog ─────────────────────────────────────────────── -->
     <q-dialog v-model="editDialogOpen" persistent>
-      <q-card style="min-width: 600px; max-width: 700px">
+      <q-card style="width: 700px; max-width: 90vw;">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">{{ t('profile.editProfile') }}</div>
           <q-space />
@@ -600,7 +600,7 @@ async function toggleAvailability(val: boolean) {
 
     <!-- ── Change Password Dialog ──────────────────────────────────────────── -->
     <q-dialog v-model="passwordDialogOpen" persistent>
-      <q-card style="min-width: 400px; max-width: 480px">
+      <q-card style="width: 480px; max-width: 90vw;">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">{{ t('profile.changePassword') }}</div>
           <q-space />

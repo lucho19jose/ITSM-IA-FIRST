@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useQuasar } from 'quasar'
 import { getRecentActivities } from '@/api/activities'
 import type { ActivityLog } from '@/types'
 
@@ -9,7 +10,9 @@ const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 
 const { t } = useI18n()
+const $q = useQuasar()
 const router = useRouter()
+const drawerWidth = computed(() => $q.screen.lt.md ? $q.screen.width : 440)
 const activities = ref<ActivityLog[]>([])
 const loading = ref(false)
 const currentPage = ref(1)
@@ -155,7 +158,7 @@ function getActionSuffix(activity: ActivityLog): string {
 </script>
 
 <template>
-  <q-drawer v-model="drawerOpen" side="right" bordered :width="440" overlay behavior="mobile" class="activities-drawer">
+  <q-drawer v-model="drawerOpen" side="right" bordered :width="drawerWidth" overlay behavior="mobile" class="activities-drawer">
     <!-- Header -->
     <div class="drawer-header row items-center q-px-lg q-py-md">
       <div class="text-h6 text-weight-bold">{{ t('activities.title') }}</div>
@@ -176,34 +179,35 @@ function getActionSuffix(activity: ActivityLog): string {
     </div>
 
     <!-- Activity timeline -->
-    <q-scroll-area v-else style="height: calc(100vh - 65px);">
-      <div class="q-pa-md">
-        <template v-for="(group, dateLabel) in groupedActivities" :key="dateLabel">
+    <q-scroll-area v-else style="height: calc(100vh - 65px); height: calc(100dvh - 65px);">
+      <div class="q-pa-md timeline-container">
+        <template v-for="(group, dateLabel, groupIdx) in groupedActivities" :key="dateLabel">
           <!-- Date header -->
-          <div class="row items-center q-mb-md q-mt-sm">
-            <div class="date-dot" />
-            <span class="text-weight-bold text-body2 q-ml-sm">{{ dateLabel }}</span>
+          <div class="timeline-date-header">
+            <div class="timeline-rail">
+              <div class="date-dot" />
+            </div>
+            <span class="text-weight-bold text-body2">{{ dateLabel }}</span>
           </div>
 
           <!-- Activity entries -->
           <div
             v-for="(activity, idx) in group"
             :key="activity.id"
-            class="activity-item q-mb-sm"
-            :class="{ 'activity-item--last': idx === group.length - 1 }"
+            class="timeline-entry"
+            :class="{ 'timeline-entry--last-in-group': idx === group.length - 1 && groupIdx === Object.keys(groupedActivities).length - 1 }"
           >
-            <div class="activity-line" />
-            <div class="row no-wrap items-start q-gutter-sm">
-              <!-- User avatar -->
-              <q-avatar size="34px" :color="getActionColor(activity.action)" text-color="white" font-size="14px" class="activity-avatar">
+            <div class="timeline-rail">
+              <div class="timeline-line" />
+            </div>
+            <div class="timeline-content">
+              <q-avatar size="32px" :color="getActionColor(activity.action)" text-color="white" font-size="13px" class="activity-avatar">
                 <img v-if="activity.user.avatar_url" :src="activity.user.avatar_url" />
                 <span v-else>{{ activity.user.name.charAt(0).toUpperCase() }}</span>
               </q-avatar>
-
-              <!-- Content -->
-              <div class="col q-pl-xs">
-                <div class="text-body2" style="line-height: 1.5;">
-                  <span class="text-weight-bold text-uppercase" style="font-size: 13px;">{{ activity.user.name }}</span>
+              <div class="timeline-text">
+                <div class="text-body2" style="line-height: 1.45;">
+                  <span class="text-weight-bold text-uppercase" style="font-size: 12px;">{{ activity.user.name }}</span>
                   {{ ' ' }}
                   <span>{{ getActionText(activity) }}</span>
                   {{ ' ' }}
@@ -242,10 +246,24 @@ function getActionSuffix(activity: ActivityLog): string {
 <style scoped>
 .activities-drawer {
   z-index: 3000;
+  max-width: 100vw !important;
 }
 
 .drawer-header {
   min-height: 56px;
+}
+
+/* Timeline layout: fixed left rail + flexible content */
+.timeline-container {
+  overflow-x: hidden;
+}
+
+.timeline-rail {
+  width: 24px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  position: relative;
 }
 
 .date-dot {
@@ -254,31 +272,46 @@ function getActionSuffix(activity: ActivityLog): string {
   border-radius: 50%;
   background: #ff9800;
   flex-shrink: 0;
-}
-
-.activity-item {
   position: relative;
-  padding-left: 6px;
-  margin-left: 0;
+  z-index: 2;
 }
 
-.activity-line {
-  position: absolute;
-  left: 5px;
-  top: 0;
-  bottom: -8px;
+.timeline-date-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+
+.timeline-entry {
+  display: flex;
+  align-items: stretch;
+  padding-bottom: 12px;
+}
+
+.timeline-line {
   width: 2px;
-  background: #e0e0e0;
+  background: transparent;
+  flex: 1;
+  min-height: 100%;
 }
 
-.activity-item--last .activity-line {
-  display: none;
+.timeline-content {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.timeline-text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .activity-avatar {
   flex-shrink: 0;
-  position: relative;
-  z-index: 1;
 }
 
 .activity-ticket-link {
@@ -293,10 +326,6 @@ function getActionSuffix(activity: ActivityLog): string {
 }
 
 /* Dark mode support */
-.body--dark .activity-line {
-  background: #444;
-}
-
 .body--dark .date-dot {
   background: #ff9800;
 }

@@ -148,7 +148,7 @@ async function onDelete() {
 
     <!-- Create/Edit Dialog -->
     <q-dialog v-model="showDialog">
-      <q-card style="min-width: 450px">
+      <q-card style="width: 450px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ editing ? 'Editar' : 'Nueva' }} Categoria</div>
         </q-card-section>
@@ -199,7 +199,7 @@ async function onDelete() {
 
     <!-- Delete Confirmation Dialog -->
     <q-dialog v-model="showDeleteDialog">
-      <q-card style="min-width: 350px">
+      <q-card style="width: 350px; max-width: 90vw;">
         <q-card-section class="row items-center">
           <q-icon name="warning" color="negative" size="28px" class="q-mr-sm" />
           <span class="text-h6">Confirmar eliminacion</span>

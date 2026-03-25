@@ -624,7 +624,7 @@ onMounted(() => {
 
     <!-- Assign Dialog -->
     <q-dialog v-model="showAssignDialog">
-      <q-card style="min-width: 350px;">
+      <q-card style="width: 350px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('assets.assign') }}</div>
         </q-card-section>
@@ -648,7 +648,7 @@ onMounted(() => {
 
     <!-- Link Ticket Dialog -->
     <q-dialog v-model="showLinkTicketDialog">
-      <q-card style="min-width: 400px;">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('assets.linkTicket') }}</div>
         </q-card-section>
@@ -678,7 +678,7 @@ onMounted(() => {
 
     <!-- Add Relationship Dialog -->
     <q-dialog v-model="showAddRelDialog">
-      <q-card style="min-width: 400px;">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('assets.addRelationship') }}</div>
         </q-card-section>

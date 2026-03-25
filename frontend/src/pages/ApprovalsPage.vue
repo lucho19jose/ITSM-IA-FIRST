@@ -391,7 +391,7 @@ const allColumns = [
 
     <!-- Approve Dialog -->
     <q-dialog v-model="showApproveDialog">
-      <q-card style="min-width: 400px">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('approvals.confirmApprove') }}</div>
         </q-card-section>
@@ -413,7 +413,7 @@ const allColumns = [
 
     <!-- Reject Dialog -->
     <q-dialog v-model="showRejectDialog">
-      <q-card style="min-width: 400px">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('approvals.confirmReject') }}</div>
         </q-card-section>

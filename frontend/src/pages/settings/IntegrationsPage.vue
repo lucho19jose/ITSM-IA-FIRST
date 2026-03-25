@@ -251,7 +251,7 @@ async function onToggleActive(integration: Integration) {
 
     <!-- Create/Edit Dialog -->
     <q-dialog v-model="showDialog" persistent>
-      <q-card style="min-width: 540px; max-width: 640px;">
+      <q-card style="width: 640px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ editing ? t('integrations.edit') : t('integrations.add') }}</div>
         </q-card-section>

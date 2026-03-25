@@ -726,7 +726,7 @@ const actionTypeOptions = computed(() =>
 
     <!-- Test Dialog -->
     <q-dialog v-model="showTestDialog">
-      <q-card style="min-width: 500px">
+      <q-card style="width: 500px; max-width: 90vw;"
         <q-card-section>
           <div class="text-h6">{{ t('automation.testRule') }}</div>
         </q-card-section>

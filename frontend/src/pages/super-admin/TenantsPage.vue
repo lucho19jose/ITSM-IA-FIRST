@@ -538,7 +538,7 @@ function getRoleBadge(role: string): { color: string; label: string } {
 
     <!-- Create/Edit Dialog -->
     <q-dialog v-model="showDialog" persistent>
-      <q-card style="min-width: 520px">
+      <q-card style="width: 520px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ editing ? 'Editar' : 'Nuevo' }} Tenant</div>
         </q-card-section>
@@ -638,7 +638,7 @@ function getRoleBadge(role: string): { color: string; label: string } {
 
     <!-- Toggle Active Confirmation Dialog -->
     <q-dialog v-model="showToggleDialog">
-      <q-card style="min-width: 380px">
+      <q-card style="width: 380px; max-width: 90vw;">
         <q-card-section class="row items-center">
           <q-icon
             :name="togglingTenant?.is_active ? 'block' : 'check_circle'"
@@ -675,7 +675,7 @@ function getRoleBadge(role: string): { color: string; label: string } {
 
     <!-- Delete Confirmation Dialog -->
     <q-dialog v-model="showDeleteDialog">
-      <q-card style="min-width: 420px" class="bg-red-1">
+      <q-card style="width: 420px; max-width: 90vw;" class="bg-red-1">
         <q-card-section class="row items-center">
           <q-icon name="dangerous" color="negative" size="32px" class="q-mr-sm" />
           <span class="text-h6 text-negative">Eliminar tenant</span>
@@ -716,7 +716,7 @@ function getRoleBadge(role: string): { color: string; label: string } {
 
     <!-- Users Dialog -->
     <q-dialog v-model="showUsersDialog">
-      <q-card style="min-width: 600px">
+      <q-card style="width: 600px; max-width: 90vw;">
         <q-card-section class="row items-center">
           <q-icon name="people" color="info" size="24px" class="q-mr-sm" />
           <div class="text-h6">Usuarios de {{ selectedTenant?.name }}</div>

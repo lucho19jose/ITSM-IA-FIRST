@@ -555,7 +555,7 @@ onMounted(async () => {
 
     <!-- Root Cause Dialog -->
     <q-dialog v-model="showRootCauseDialog" persistent>
-      <q-card style="min-width: 500px;">
+      <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('problems.updateRootCause') }}</div>
         </q-card-section>
@@ -582,7 +582,7 @@ onMounted(async () => {
 
     <!-- Resolve Dialog -->
     <q-dialog v-model="showResolveDialog" persistent>
-      <q-card style="min-width: 500px;">
+      <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('problems.resolve') }}</div>
         </q-card-section>
@@ -603,7 +603,7 @@ onMounted(async () => {
 
     <!-- Link Tickets Dialog -->
     <q-dialog v-model="showLinkDialog">
-      <q-card style="min-width: 500px;">
+      <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('problems.linkTicket') }}</div>
         </q-card-section>

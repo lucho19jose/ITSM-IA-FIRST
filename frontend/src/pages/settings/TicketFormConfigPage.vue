@@ -560,7 +560,7 @@ function getRoleLabels(roles: string[] | null): string {
 
     <!-- Create/Edit Field Dialog -->
     <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="min-width: 500px; max-width: 600px;">
+      <q-card style="width: 600px; max-width: 90vw;">
         <q-card-section class="row items-center">
           <q-icon
             :name="dialogMode === 'create' ? 'add_circle' : 'edit'"

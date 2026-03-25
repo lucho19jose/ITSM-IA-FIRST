@@ -115,7 +115,7 @@ function getRoleBadge(role: string): { color: string; label: string } {
     </q-table>
 
     <q-dialog v-model="showDialog">
-      <q-card style="min-width: 400px">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ editingUser ? 'Editar' : 'Nuevo' }} Usuario</div>
         </q-card-section>

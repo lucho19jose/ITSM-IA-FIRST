@@ -691,7 +691,7 @@ async function saveEdit() {
 
     <!-- CAB Review Dialog -->
     <q-dialog v-model="showCabDialog" persistent>
-      <q-card style="min-width: 400px;">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('changes.selectApprovers') }}</div>
         </q-card-section>
@@ -713,7 +713,7 @@ async function saveEdit() {
 
     <!-- Reject Dialog -->
     <q-dialog v-model="showRejectDialog" persistent>
-      <q-card style="min-width: 400px;">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('changes.rejectReason') }}</div>
         </q-card-section>
@@ -729,7 +729,7 @@ async function saveEdit() {
 
     <!-- Schedule Dialog -->
     <q-dialog v-model="showScheduleDialog" persistent>
-      <q-card style="min-width: 400px;">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('changes.scheduleImplementation') }}</div>
         </q-card-section>
@@ -746,7 +746,7 @@ async function saveEdit() {
 
     <!-- Close Review Dialog -->
     <q-dialog v-model="showCloseDialog" persistent>
-      <q-card style="min-width: 400px;">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('changes.postImplementationReview') }}</div>
         </q-card-section>
@@ -762,7 +762,7 @@ async function saveEdit() {
 
     <!-- Link Tickets Dialog -->
     <q-dialog v-model="showLinkDialog" persistent>
-      <q-card style="min-width: 500px;">
+      <q-card style="width: 500px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('changes.linkTickets') }}</div>
         </q-card-section>

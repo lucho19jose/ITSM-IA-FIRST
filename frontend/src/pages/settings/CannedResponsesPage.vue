@@ -205,7 +205,7 @@ function getVisibilityBadge(visibility: string): { color: string; label: string 
     </q-table>
 
     <q-dialog v-model="showDialog" persistent>
-      <q-card style="min-width: 600px; max-width: 800px;">
+      <q-card style="width: 800px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">
             {{ editingResponse ? t('cannedResponses.edit') : t('cannedResponses.new') }}

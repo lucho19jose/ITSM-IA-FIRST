@@ -318,7 +318,7 @@ function getUserName(id: number | null): string {
 
     <!-- Delete confirmation -->
     <q-dialog v-model="showDeleteDialog">
-      <q-card style="min-width: 350px">
+      <q-card style="width: 350px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('approvalWorkflows.confirmDelete') }}</div>
         </q-card-section>

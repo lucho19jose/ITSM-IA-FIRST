@@ -405,7 +405,7 @@ onMounted(() => {
 
   <!-- Create/Edit View Dialog -->
   <q-dialog v-model="showCreateDialog" persistent>
-    <q-card style="min-width: 380px;">
+    <q-card style="width: 380px; max-width: 90vw;">
       <q-card-section>
         <div class="text-h6">{{ editingView ? 'Editar vista' : 'Guardar vista personalizada' }}</div>
         <div v-if="!editingView" class="text-caption text-grey-7">

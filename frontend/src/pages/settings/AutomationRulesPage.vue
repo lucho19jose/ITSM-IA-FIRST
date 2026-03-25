@@ -327,7 +327,7 @@ function conditionsCount(rule: AutomationRule): number {
 
     <!-- Delete Confirmation -->
     <q-dialog v-model="showDeleteDialog">
-      <q-card style="min-width: 400px">
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">{{ t('automation.confirmDelete') }}</div>
         </q-card-section>
@@ -415,7 +415,7 @@ function conditionsCount(rule: AutomationRule): number {
 
     <!-- Templates Dialog -->
     <q-dialog v-model="showTemplatesDialog">
-      <q-card style="min-width: 600px; max-width: 800px">
+      <q-card style="width: 800px; max-width: 90vw;">
         <q-card-section class="row items-center">
           <div class="text-h6">{{ t('automation.templatesTitle') }}</div>
           <q-space />
