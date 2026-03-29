@@ -79,7 +79,7 @@ async function submitRequest() {
 
     <!-- Request Dialog -->
     <q-dialog v-model="requestDialog">
-      <q-card style="width: 400px; max-width: 90vw;"
+      <q-card style="width: 400px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">Solicitar: {{ selectedItem?.name }}</div>
         </q-card-section>
