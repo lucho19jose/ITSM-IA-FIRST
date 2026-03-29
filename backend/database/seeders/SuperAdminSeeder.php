@@ -10,11 +10,14 @@ class SuperAdminSeeder extends Seeder
 {
     public function run(): void
     {
+        $password = env('SUPER_ADMIN_PASSWORD')
+            ?? throw new \RuntimeException('SUPER_ADMIN_PASSWORD env variable is required');
+
         User::withoutGlobalScopes()->updateOrCreate(
-            ['email' => 'superadmin@autoservice.pe'],
+            ['email' => env('SUPER_ADMIN_EMAIL', 'superadmin@autoservice.pe')],
             [
                 'name' => 'Super Admin',
-                'password' => Hash::make('superadmin123'),
+                'password' => Hash::make($password),
                 'role' => 'super_admin',
                 'tenant_id' => null,
             ]
