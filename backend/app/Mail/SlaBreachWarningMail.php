@@ -24,7 +24,7 @@ class SlaBreachWarningMail extends Mailable implements ShouldQueue
         public int $minutesRemaining,
     ) {
         $this->ticket->loadMissing('requester', 'category');
-        $this->tenantName = $ticket->tenant?->name ?? 'AutoService';
+        $this->tenantName = $ticket->tenant?->name ?? 'Chuyma';
     }
 
     public function envelope(): Envelope

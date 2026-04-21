@@ -1,4 +1,4 @@
-# Configuración de Android - AutoService ITSM
+# Configuración de Android - Chuyma ITSM
 
 Esta guía te ayudará a convertir la aplicación web en una app Android nativa usando Capacitor.
 

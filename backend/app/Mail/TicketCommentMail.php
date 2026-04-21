@@ -26,7 +26,7 @@ class TicketCommentMail extends Mailable implements ShouldQueue
         $this->comment->loadMissing('user', 'ticket');
         $this->ticket = $this->comment->ticket;
         $this->ticket->loadMissing('requester');
-        $this->tenantName = $this->ticket->tenant?->name ?? 'AutoService';
+        $this->tenantName = $this->ticket->tenant?->name ?? 'Chuyma';
     }
 
     public function envelope(): Envelope

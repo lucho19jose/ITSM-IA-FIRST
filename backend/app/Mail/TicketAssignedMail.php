@@ -22,7 +22,7 @@ class TicketAssignedMail extends Mailable implements ShouldQueue
         public User $agent,
     ) {
         $this->ticket->loadMissing('requester', 'category');
-        $this->tenantName = $ticket->tenant?->name ?? 'AutoService';
+        $this->tenantName = $ticket->tenant?->name ?? 'Chuyma';
     }
 
     public function envelope(): Envelope

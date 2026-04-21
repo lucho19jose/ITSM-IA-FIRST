@@ -132,7 +132,7 @@ class ClaudeClient
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
                 'HTTP-Referer' => config('app.url'),
-                'X-Title' => 'AutoService ITSM',
+                'X-Title' => 'Chuyma ITSM',
             ])->timeout($timeout)->post($this->baseUrl . '/chat/completions', [
                 'model' => $model,
                 'max_tokens' => $maxTokens,

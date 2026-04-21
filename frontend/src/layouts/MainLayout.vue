@@ -270,7 +270,7 @@ function restartTour() {
     <q-header elevated class="bg-primary">
       <q-toolbar>
         <q-btn flat dense round icon="menu" @click="toggleDrawer" />
-        <q-toolbar-title class="gt-sm">AutoService</q-toolbar-title>
+        <q-toolbar-title class="gt-sm">Chuyma</q-toolbar-title>
         <q-space />
 
         <!-- Global search (Freshservice style) -->
@@ -497,7 +497,7 @@ function restartTour() {
               </q-avatar>
               <div v-if="!isMini" class="col ellipsis">
                 <div class="text-subtitle2 text-weight-bold ellipsis">
-                  {{ auth.tenant?.name || 'AutoService' }}
+                  {{ auth.tenant?.name || 'Chuyma' }}
                 </div>
                 <div v-if="auth.tenant?.slug" class="text-caption text-grey ellipsis">
                   {{ auth.tenant.slug }}.autoservice.test

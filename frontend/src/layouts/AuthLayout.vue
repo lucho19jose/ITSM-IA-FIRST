@@ -14,7 +14,7 @@ onMounted(() => {
     <q-page-container>
       <q-page class="flex flex-center" style="background: linear-gradient(135deg, #1976D2 0%, #26A69A 100%)">
         <div class="column items-center q-pa-md" style="width: 100%; max-width: 450px">
-          <div class="text-h4 text-white q-mb-sm text-weight-bold">AutoService</div>
+          <div class="text-h4 text-white q-mb-sm text-weight-bold">Chuyma</div>
           <div v-if="tenantStore.tenantName" class="text-subtitle1 text-white q-mb-lg" style="opacity: 0.9">
             {{ tenantStore.tenantName }}
           </div>

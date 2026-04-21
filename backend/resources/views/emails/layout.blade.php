@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>@yield('title', 'AutoService ITSM')</title>
+    <title>@yield('title', 'Chuyma ITSM')</title>
     <!--[if mso]>
     <noscript>
         <xml>
@@ -70,7 +70,7 @@
                                         @if(isset($tenantName))
                                             <span style="color: #ffffff; font-size: 18px; font-weight: 700;">{{ $tenantName }}</span>
                                         @else
-                                            <span style="color: #ffffff; font-size: 18px; font-weight: 700;">AutoService</span>
+                                            <span style="color: #ffffff; font-size: 18px; font-weight: 700;">Chuyma</span>
                                         @endif
                                     </td>
                                 </tr>
@@ -96,7 +96,7 @@
                     <tr>
                         <td style="border-top: 1px solid #eeeeee; padding: 16px 28px; text-align: center;">
                             <p style="margin: 0; font-size: 12px; color: #999999;">
-                                <strong>AutoService</strong> &mdash; Plataforma ITSM
+                                <strong>Chuyma</strong> &mdash; Plataforma ITSM
                             </p>
                             <p style="margin: 6px 0 0; font-size: 11px; color: #bbbbbb;">
                                 Este correo fue enviado automáticamente. Por favor no responda directamente a este mensaje.
