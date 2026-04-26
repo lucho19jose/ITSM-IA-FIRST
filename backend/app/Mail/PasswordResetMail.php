@@ -21,7 +21,7 @@ class PasswordResetMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Restablecer contraseña - Chuyma',
+            subject: 'Restablecer contraseña - Chuymadesk',
         );
     }
 

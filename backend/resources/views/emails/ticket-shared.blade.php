@@ -87,7 +87,7 @@
         </div>
 
         <div class="footer">
-            Enviado desde <strong>Chuyma</strong> por {{ $sender->name }} ({{ $sender->email }})
+            Enviado desde <strong>Chuymadesk</strong> por {{ $sender->name }} ({{ $sender->email }})
         </div>
     </div>
 </body>

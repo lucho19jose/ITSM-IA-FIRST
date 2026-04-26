@@ -15,8 +15,8 @@ export default defineConfig({
       registerType: 'prompt',
       injectRegister: false,
       manifest: {
-        name: 'Chuyma - ITSM AI-First',
-        short_name: 'Chuyma',
+        name: 'Chuymadesk - ITSM AI-First',
+        short_name: 'Chuymadesk',
         description: 'Plataforma ITSM con IA nativa para empresas peruanas',
         theme_color: '#1976D2',
         background_color: '#ffffff',

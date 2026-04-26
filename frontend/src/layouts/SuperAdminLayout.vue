@@ -24,7 +24,7 @@ async function handleLogout() {
       <q-toolbar>
         <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
         <q-toolbar-title>
-          Chuyma
+          Chuymadesk
           <q-badge color="red" class="q-ml-sm">Super Admin</q-badge>
         </q-toolbar-title>
         <q-space />

@@ -1,4 +1,4 @@
-# Chuyma ITSM — Deployment Guide (Ubuntu 24.04 VPS)
+# Chuymadesk ITSM — Deployment Guide (Ubuntu 24.04 VPS)
 
 Server: Ubuntu 24.04 LTS + Nginx + PHP 8.2-FPM + MySQL 8.0 (native, already installed)
 
@@ -24,16 +24,16 @@ sudo apt install -y php8.2-fpm php8.2-mysql php8.2-mbstring php8.2-xml \
 
 After install, both FPM services run independently:
 - `php8.1-fpm` → your existing Laravel 10 project (unchanged)
-- `php8.2-fpm` → Chuyma (new)
+- `php8.2-fpm` → Chuymadesk (new)
 
 ```bash
 # Verify both are running
 sudo systemctl status php8.1-fpm   # existing project
-sudo systemctl status php8.2-fpm   # Chuyma
+sudo systemctl status php8.2-fpm   # Chuymadesk
 ```
 
 > **Do NOT change the system default PHP CLI.** If you need to run artisan
-> commands for Chuyma specifically, use: `php8.2 artisan ...`
+> commands for Chuymadesk specifically, use: `php8.2 artisan ...`
 
 ### Install Node.js 22
 
@@ -99,7 +99,7 @@ cp .env.example .env
 ### Edit `.env` — Replace these values:
 
 ```env
-APP_NAME=Chuyma
+APP_NAME=Chuymadesk
 APP_ENV=production
 APP_DEBUG=false
 APP_TIMEZONE=America/Lima
@@ -123,7 +123,7 @@ MAIL_USERNAME=your-email@gmail.com
 MAIL_PASSWORD=your-app-password
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=noreply@yourdomain.com
-MAIL_FROM_NAME="Chuyma"
+MAIL_FROM_NAME="Chuymadesk"
 
 ANTHROPIC_API_KEY=sk-ant-xxxxx
 ```
@@ -160,7 +160,7 @@ npm ci
 
 ```env
 VITE_API_URL=https://yourdomain.com
-VITE_APP_NAME=Chuyma
+VITE_APP_NAME=Chuymadesk
 ```
 
 ```bash
@@ -307,7 +307,7 @@ sudo nano /etc/systemd/system/autoservice-worker.service
 
 ```ini
 [Unit]
-Description=Chuyma Queue Worker
+Description=Chuymadesk Queue Worker
 After=network.target mysql.service
 
 [Service]
@@ -406,7 +406,7 @@ Your existing Laravel 10 project on this VPS keeps working as-is. Just make sure
 fastcgi_pass unix:/run/php/php8.1-fpm.sock;
 ```
 
-Chuyma uses `php8.2-fpm.sock` in its own config — no overlap.
+Chuymadesk uses `php8.2-fpm.sock` in its own config — no overlap.
 
 ## Troubleshooting
 

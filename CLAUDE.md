@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Chuyma** — Plataforma ITSM AI-first para Perú. Competencia directa de Freshservice/ServiceNow pero con IA nativa, precios en soles (PEN), y cumplimiento regulatorio peruano. Target: empresas medianas (50-250 empleados).
+**Chuymadesk** — Plataforma ITSM AI-first para Perú. Competencia directa de Freshservice/ServiceNow pero con IA nativa, precios en soles (PEN), y cumplimiento regulatorio peruano. Target: empresas medianas (50-250 empleados).
 
 ## Environment
 

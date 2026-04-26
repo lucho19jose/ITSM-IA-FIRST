@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.autoservice.itsm',
-  appName: 'Chuyma ITSM',
+  appName: 'Chuymadesk ITSM',
   webDir: 'dist',
   server: {
     // Para desarrollo, descomenta y configura tu IP local:

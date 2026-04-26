@@ -318,7 +318,7 @@ class WebhookNotificationService
     {
         $data = [
             'ticket_number' => 'TEST-001',
-            'title' => 'Mensaje de prueba - Chuyma ITSM',
+            'title' => 'Mensaje de prueba - Chuymadesk ITSM',
             'priority' => 'medium',
             'requester' => 'Sistema de Prueba',
             'type' => 'incident',

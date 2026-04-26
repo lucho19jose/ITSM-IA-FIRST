@@ -20,7 +20,7 @@ class TicketClosedMail extends Mailable implements ShouldQueue
         public Ticket $ticket,
     ) {
         $this->ticket->loadMissing('requester', 'assignee', 'category');
-        $this->tenantName = $ticket->tenant?->name ?? 'Chuyma';
+        $this->tenantName = $ticket->tenant?->name ?? 'Chuymadesk';
     }
 
     public function envelope(): Envelope

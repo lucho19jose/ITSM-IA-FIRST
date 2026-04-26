@@ -70,7 +70,7 @@ async function onSubmit() {
     <div class="survey-container">
       <!-- Header -->
       <div class="survey-header">
-        <div class="survey-logo">Chuyma</div>
+        <div class="survey-logo">Chuymadesk</div>
         <div class="survey-header-subtitle">Encuesta de satisfaccion</div>
       </div>
 
@@ -193,7 +193,7 @@ async function onSubmit() {
 
       <!-- Footer -->
       <div class="survey-footer">
-        <p>Chuyma &mdash; Plataforma ITSM</p>
+        <p>Chuymadesk &mdash; Plataforma ITSM</p>
       </div>
     </div>
   </div>

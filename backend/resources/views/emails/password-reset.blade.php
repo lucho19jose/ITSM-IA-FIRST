@@ -8,7 +8,7 @@
     <h2 style="margin: 0 0 16px; font-size: 20px; color: #333333;">Hola {{ $user->name }},</h2>
 
     <p style="margin: 0 0 16px; color: #555555;">
-        Recibimos una solicitud para restablecer la contraseña de tu cuenta en Chuyma.
+        Recibimos una solicitud para restablecer la contraseña de tu cuenta en Chuymadesk.
         Haz clic en el siguiente botón para crear una nueva contraseña:
     </p>
 

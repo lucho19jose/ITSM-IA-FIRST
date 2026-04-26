@@ -1,6 +1,6 @@
-# Chuyma — ITSM AI-First
+# Chuymadesk — ITSM AI-First
 
-**Chuyma** es una plataforma **open source** de ITSM (IT Service Management) con inteligencia artificial nativa, diseñada para empresas medianas y grandes de cualquier parte del mundo (50+ empleados). Compite directamente con Freshservice y ServiceNow, ofreciendo IA integrada desde el primer día. Incluye soporte nativo para el mercado peruano (precios en soles PEN, cumplimiento Ley 29733, SUNAT), pero puede adaptarse a cualquier región.
+**Chuymadesk** es una plataforma **open source** de ITSM (IT Service Management) con inteligencia artificial nativa, diseñada para empresas medianas y grandes de cualquier parte del mundo (50+ empleados). Compite directamente con Freshservice y ServiceNow, ofreciendo IA integrada desde el primer día. Incluye soporte nativo para el mercado peruano (precios en soles PEN, cumplimiento Ley 29733, SUNAT), pero puede adaptarse a cualquier región.
 
 > 🌍 **Proyecto open source bajo licencia MIT** — cualquier contribución es bienvenida.
 > ☁️ ¿Prefieres no administrar servidores? Consulta la [Versión Cloud (Pro)](#versión-cloud-pro).
@@ -32,7 +32,7 @@
 
 ## Descripción general
 
-Chuyma provee las siguientes capacidades principales:
+Chuymadesk provee las siguientes capacidades principales:
 
 - **Gestión de tickets** con ciclo de vida completo (creación, asignación, escalado, cierre).
 - **Clasificación automática con IA**: los tickets se categorizan y priorizan usando Claude (Anthropic) con umbral de confianza configurable (> 70 % para auto-aplicación).
@@ -132,7 +132,7 @@ npm run dev
 
 | Variable | Descripción | Ejemplo |
 |---|---|---|
-| `APP_NAME` | Nombre de la aplicación | `Chuyma` |
+| `APP_NAME` | Nombre de la aplicación | `Chuymadesk` |
 | `APP_URL` | URL base del backend | `http://autoservice.test` |
 | `APP_TIMEZONE` | Zona horaria | `America/Lima` |
 | `DB_CONNECTION` | Driver de base de datos | `mysql` |
@@ -381,7 +381,7 @@ npm run test:watch   # Vitest en modo watch
 
 ## Contribuir
 
-Chuyma es un proyecto **open source** y **toda contribución es bienvenida**, sin importar tu ubicación o nivel de experiencia. Puedes contribuir con código, documentación, traducciones, reportes de bugs, ideas o mejoras.
+Chuymadesk es un proyecto **open source** y **toda contribución es bienvenida**, sin importar tu ubicación o nivel de experiencia. Puedes contribuir con código, documentación, traducciones, reportes de bugs, ideas o mejoras.
 
 ### ¿Cómo contribuir?
 
@@ -435,7 +435,7 @@ Chuyma es un proyecto **open source** y **toda contribución es bienvenida**, si
 
 ## Licencia
 
-Chuyma se distribuye bajo la **licencia MIT**.
+Chuymadesk se distribuye bajo la **licencia MIT**.
 
 ### ¿Qué significa la licencia MIT?
 
@@ -458,7 +458,7 @@ La licencia MIT es una de las licencias de software libre más permisivas que ex
 ```
 MIT License
 
-Copyright (c) 2025 Chuyma Contributors
+Copyright (c) 2025 Chuymadesk Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -33,7 +33,7 @@
     </table>
 
     <p style="margin: 0 0 12px; color: #555555;">
-        Con Chuyma puedes:
+        Con Chuymadesk puedes:
     </p>
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 20px;">
         <tr>

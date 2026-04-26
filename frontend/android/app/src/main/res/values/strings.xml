@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Chuyma ITSM</string>
-    <string name="title_activity_main">Chuyma ITSM</string>
+    <string name="app_name">Chuymadesk ITSM</string>
+    <string name="title_activity_main">Chuymadesk ITSM</string>
     <string name="package_name">com.autoservice.itsm</string>
     <string name="custom_url_scheme">com.autoservice.itsm</string>
 </resources>
