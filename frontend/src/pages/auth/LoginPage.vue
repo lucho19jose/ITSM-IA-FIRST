@@ -21,7 +21,6 @@ async function onSubmit() {
   try {
     await auth.login(form.value.email, form.value.password)
     Notify.create({ type: 'positive', message: t('auth.loginSuccess') })
-    // End-users go to the portal
     if (auth.isEndUser && auth.tenant?.slug) {
       router.push(`/portal/${auth.tenant.slug}`)
       return
@@ -37,23 +36,42 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div>
-    <div class="text-h6 q-mb-md">{{ t('auth.login') }}</div>
+  <div class="login-form">
+    <div class="text-h6 text-weight-bold q-mb-xs">{{ t('auth.login') }}</div>
+    <div class="text-body2 text-grey-7 q-mb-lg">
+      Ingresa tus credenciales para continuar
+    </div>
+
     <q-form @submit.prevent="onSubmit" class="q-gutter-md">
       <q-input
         v-model="form.email"
         :label="t('auth.email')"
         type="email"
         outlined
+        rounded-md
+        dense
+        autocomplete="email"
+        class="login-input"
         :rules="[val => !!val || 'Campo requerido', val => /.+@.+\..+/.test(val) || 'Email inválido']"
-      />
+      >
+        <template v-slot:prepend>
+          <q-icon name="mail_outline" />
+        </template>
+      </q-input>
+
       <q-input
         v-model="form.password"
         :label="t('auth.password')"
         :type="showPassword ? 'text' : 'password'"
         outlined
+        dense
+        autocomplete="current-password"
+        class="login-input"
         :rules="[val => !!val || 'Campo requerido']"
       >
+        <template v-slot:prepend>
+          <q-icon name="lock_outline" />
+        </template>
         <template v-slot:append>
           <q-icon
             :name="showPassword ? 'visibility_off' : 'visibility'"
@@ -62,18 +80,39 @@ async function onSubmit() {
           />
         </template>
       </q-input>
+
       <q-btn
         type="submit"
         color="primary"
         :label="t('auth.login')"
-        class="full-width"
-        size="lg"
+        class="full-width login-btn"
+        unelevated
+        size="md"
+        no-caps
         :loading="auth.loading"
       />
     </q-form>
-    <div class="text-center q-mt-md">
+
+    <q-separator class="q-my-lg" />
+
+    <div class="text-center text-body2 text-grey-7">
       {{ t('auth.noAccount') }}
-      <router-link to="/register" class="text-primary">{{ t('auth.register') }}</router-link>
+      <router-link to="/register" class="text-primary text-weight-medium" style="text-decoration: none">
+        {{ t('auth.register') }}
+      </router-link>
     </div>
   </div>
 </template>
+
+<style scoped>
+.login-form :deep(.q-field--outlined .q-field__control) {
+  border-radius: 10px;
+}
+
+.login-btn {
+  border-radius: 10px;
+  height: 44px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+</style>
