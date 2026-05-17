@@ -7,7 +7,9 @@ use App\Http\Resources\UserResource;
 use App\Mail\PasswordResetMail;
 use App\Mail\WelcomeMail;
 use App\Models\Tenant;
+use App\Models\TicketFormField;
 use App\Models\User;
+use Database\Seeders\TicketFormFieldSeeder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +52,14 @@ class AuthController extends Controller
             'role' => 'admin',
             'tenant_id' => $tenant->id,
         ]);
+
+        // Seed the default ticket form fields for the new tenant. Without them
+        // the ticket form can't capture title/description and submissions fail
+        // with "The title field is required".
+        app()->instance('tenant_id', $tenant->id);
+        foreach (TicketFormFieldSeeder::getSystemFields() as $field) {
+            TicketFormField::create($field);
+        }
 
         $token = $user->createToken('auth-token')->accessToken;
 

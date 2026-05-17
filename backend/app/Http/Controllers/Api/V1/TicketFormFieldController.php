@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\TicketFormField;
+use Database\Seeders\TicketFormFieldSeeder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,16 @@ class TicketFormFieldController extends Controller
     public function index(Request $request): JsonResponse
     {
         $userRole = $request->user()->role;
+
+        // Self-registered tenants are created without form fields. Without the
+        // 'title' / 'description' fields the ticket form can't capture them and
+        // every submission fails with "The title field is required". Backfill
+        // the default system fields the first time the form is requested.
+        if (TicketFormField::count() === 0) {
+            foreach (TicketFormFieldSeeder::getSystemFields() as $field) {
+                TicketFormField::create($field);
+            }
+        }
 
         $fields = TicketFormField::orderBy('section')
             ->orderBy('sort_order')
